@@ -1,4 +1,3 @@
-// lib/features/exercise_detail/presentation/screens/exercise_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:new_gym_app/core/models/exercise_model.dart';
@@ -6,7 +5,6 @@ import 'package:new_gym_app/core/services/firebase_exercise_service.dart';
 import 'package:new_gym_app/core/shared_widgets/app_footer.dart';
 import 'package:new_gym_app/features/exercise_detail/presentation/providers/exercise_provider.dart';
 
-// Provider para buscar exercício por ID
 final exerciseByIdProvider = FutureProvider.family<Exercise?, String>((
   ref,
   exerciseId,
@@ -29,7 +27,6 @@ class ExerciseDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Se tiver exerciseId, busca por ID, senão busca por nome
     final exerciseAsyncValue = exerciseId != null
         ? ref.watch(exerciseByIdProvider(exerciseId!))
         : ref.watch(exerciseDetailProvider(exerciseName!));
@@ -49,7 +46,6 @@ class ExerciseDetailScreen extends ConsumerWidget {
     );
   }
 
-  // Widget separado para construir a UI quando os dados estiverem disponíveis
   Widget _buildExerciseDetails(BuildContext context, Exercise exercise) {
     return Scaffold(
       appBar: AppBar(
@@ -72,7 +68,6 @@ class ExerciseDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Exibir imagem/GIF/vídeo do exercício
               Container(
                 width: double.infinity,
                 height: 300,
@@ -165,9 +160,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
                       Center(
                         child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: Adicionar lógica para marcar como concluído
-                          },
+                          onPressed: () {},
                           child: const Text('Marcar como concluído'),
                         ),
                       ),

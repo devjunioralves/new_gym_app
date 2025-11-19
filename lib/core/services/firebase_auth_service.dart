@@ -1,14 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:new_gym_app/core/models/user_model.dart' as app_model;
 import 'package:new_gym_app/core/models/user_role.dart';
+
+import '../../../firebase_options.dart';
 
 class FirebaseAuthService {
   final firebase_auth.FirebaseAuth _firebaseAuth =
       firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Stream do estado de autenticação
   Stream<app_model.User?> get authStateChanges {
     return _firebaseAuth.authStateChanges().asyncMap((firebaseUser) async {
       if (firebaseUser == null) return null;
@@ -16,15 +18,12 @@ class FirebaseAuthService {
     });
   }
 
-  // Usuário atual
   app_model.User? get currentUser {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return null;
-    // Retorna null para buscar assincronamente do Firestore
     return null;
   }
 
-  // Login
   Future<app_model.User> login(String email, String password) async {
     try {
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
@@ -37,7 +36,6 @@ class FirebaseAuthService {
     }
   }
 
-  // Registro
   Future<app_model.User> register(
     String name,
     String email,
@@ -51,7 +49,6 @@ class FirebaseAuthService {
         password: password,
       );
 
-      // Cria documento do usuário no Firestore
       final user = app_model.User(
         uid: credential.user!.uid,
         name: name,
@@ -69,7 +66,68 @@ class FirebaseAuthService {
     }
   }
 
-  // Atualizar perfil
+  Future<app_model.User> registerStudentAsPersonal(
+    String name,
+    String email,
+    String password,
+    String personalTrainerId,
+  ) async {
+    firebase_auth.FirebaseAuth? secondaryAuth;
+    FirebaseApp? secondaryApp;
+
+    try {
+      if (_firebaseAuth.currentUser == null) {
+        throw Exception('Personal Trainer não autenticado');
+      }
+      secondaryApp = await Firebase.initializeApp(
+        name: 'Secondary',
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      secondaryAuth = firebase_auth.FirebaseAuth.instanceFor(app: secondaryApp);
+
+      final credential = await secondaryAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final studentUid = credential.user!.uid;
+
+      final student = app_model.User(
+        uid: studentUid,
+        name: name,
+        email: email,
+        photoUrl: 'assets/images/profile.png',
+        role: UserRole.student,
+        personalTrainerId: personalTrainerId,
+      );
+
+      await _firestore.collection('users').doc(studentUid).set(student.toMap());
+
+      await secondaryAuth.signOut();
+
+      await secondaryApp.delete();
+
+      return student;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      if (secondaryAuth != null) {
+        await secondaryAuth.signOut();
+      }
+      if (secondaryApp != null) {
+        await secondaryApp.delete();
+      }
+      throw _handleAuthException(e);
+    } catch (e) {
+      if (secondaryAuth != null) {
+        await secondaryAuth.signOut();
+      }
+      if (secondaryApp != null) {
+        await secondaryApp.delete();
+      }
+      throw Exception('Erro ao cadastrar aluno: $e');
+    }
+  }
+
   Future<app_model.User> updateUserProfile(
     String uid,
     String name,
@@ -87,12 +145,10 @@ class FirebaseAuthService {
     }
   }
 
-  // Logout
   Future<void> logout() async {
     await _firebaseAuth.signOut();
   }
 
-  // Buscar dados do usuário no Firestore
   Future<app_model.User> _getUserFromFirestore(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
 
@@ -103,7 +159,6 @@ class FirebaseAuthService {
     return app_model.User.fromMap(doc.data()!, uid);
   }
 
-  // Tratamento de erros do Firebase Auth
   String _handleAuthException(firebase_auth.FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':

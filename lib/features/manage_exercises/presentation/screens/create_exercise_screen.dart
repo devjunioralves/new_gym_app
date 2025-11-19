@@ -78,9 +78,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cadastrar Exercício'),
-      ),
+      appBar: AppBar(title: const Text('Cadastrar Exercício')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -172,7 +170,6 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
             ),
             const SizedBox(height: 16),
 
-            // URL da imagem/GIF/vídeo
             TextFormField(
               controller: _imageUrlController,
               decoration: const InputDecoration(
@@ -188,7 +185,6 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Dica sobre onde encontrar GIFs
             Card(
               color: Colors.blue[50],
               child: Padding(
@@ -253,7 +249,9 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                       ),
                     )
                   : const Icon(Icons.check),
-              label: Text(_isLoading ? 'Cadastrando...' : 'Cadastrar Exercício'),
+              label: Text(
+                _isLoading ? 'Cadastrando...' : 'Cadastrar Exercício',
+              ),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
               ),

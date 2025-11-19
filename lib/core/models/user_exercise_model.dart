@@ -1,16 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Relaciona exercícios com usuários (alunos)
-/// Personal Trainers atribuem exercícios aos seus alunos
 class UserExercise {
-  final String id; // ID do documento no Firestore
-  final String userId; // ID do aluno
-  final String exerciseId; // ID do exercício
-  final String assignedBy; // ID do personal trainer que atribuiu
-  final DateTime assignedAt; // Data de atribuição
-  final int? customSeries; // Séries customizadas (opcional)
-  final int? customReps; // Repetições customizadas (opcional)
-  final String? notes; // Observações do personal
+  final String id;
+  final String userId;
+  final String exerciseId;
+  final String assignedBy;
+  final DateTime assignedAt;
+  final int? customSeries;
+  final int? customReps;
+  final String? notes;
 
   UserExercise({
     required this.id,
@@ -23,7 +21,6 @@ class UserExercise {
     this.notes,
   });
 
-  // Converter para Map (para salvar no Firestore)
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -36,7 +33,6 @@ class UserExercise {
     };
   }
 
-  // Criar a partir de Map (para ler do Firestore)
   factory UserExercise.fromMap(Map<String, dynamic> map, String id) {
     return UserExercise(
       id: id,
@@ -50,7 +46,6 @@ class UserExercise {
     );
   }
 
-  // Copiar com modificações
   UserExercise copyWith({
     String? id,
     String? userId,

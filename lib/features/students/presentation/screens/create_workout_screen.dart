@@ -67,14 +67,12 @@ class _CreateWorkoutScreenState extends ConsumerState<CreateWorkoutScreen> {
       final user = ref.read(authProvider).value;
       if (user == null) throw Exception('Usuário não autenticado');
 
-      // Criar treino
       final workoutId = await _workoutService.createWorkout(
         name: _nameController.text.trim(),
         studentId: widget.studentId,
         createdBy: user.uid,
       );
 
-      // Adicionar exercícios
       for (final workoutExercise in _selectedExercises.values) {
         await _workoutService.addExerciseToWorkout(
           workoutId: workoutId,
@@ -113,7 +111,6 @@ class _CreateWorkoutScreenState extends ConsumerState<CreateWorkoutScreen> {
     final repsController = TextEditingController(text: '12');
     final notesController = TextEditingController();
 
-    // Se já está selecionado, preencher com valores existentes
     if (_selectedExercises.containsKey(exercise.id)) {
       final existing = _selectedExercises[exercise.id]!;
       seriesController.text = existing.series.toString();

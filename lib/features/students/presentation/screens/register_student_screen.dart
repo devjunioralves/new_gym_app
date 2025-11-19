@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/models/user_role.dart';
 import '../../../../core/services/firebase_auth_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -28,19 +26,16 @@ class _RegisterStudentScreenState extends ConsumerState<RegisterStudentScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Pega o ID do personal logado
       final currentUser = ref.read(authProvider).value;
       if (currentUser == null) {
         throw Exception('Personal Trainer não autenticado');
       }
 
-      // Registra o aluno vinculado ao personal
-      await _authService.register(
+      await _authService.registerStudentAsPersonal(
         _nameController.text.trim(),
         _emailController.text.trim(),
         _passwordController.text,
-        UserRole.student,
-        personalTrainerId: currentUser.uid,
+        currentUser.uid,
       );
 
       if (mounted) {
@@ -50,7 +45,12 @@ class _RegisterStudentScreenState extends ConsumerState<RegisterStudentScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        context.pop();
+
+        _nameController.clear();
+        _emailController.clear();
+        _passwordController.clear();
+
+        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
@@ -69,9 +69,7 @@ class _RegisterStudentScreenState extends ConsumerState<RegisterStudentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cadastrar Aluno'),
-      ),
+      appBar: AppBar(title: const Text('Cadastrar Aluno')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -79,19 +77,12 @@ class _RegisterStudentScreenState extends ConsumerState<RegisterStudentScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
-                Icons.person_add,
-                size: 80,
-                color: Colors.blue,
-              ),
+              const Icon(Icons.person_add, size: 80, color: Colors.blue),
               const SizedBox(height: 24),
               const Text(
                 'Cadastre um novo aluno',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(

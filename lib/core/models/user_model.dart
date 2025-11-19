@@ -6,8 +6,7 @@ class User {
   final String email;
   final String photoUrl;
   final UserRole role;
-  final String?
-  personalTrainerId; // ID do personal responsável (apenas para alunos)
+  final String? personalTrainerId;
 
   const User({
     required this.uid,
@@ -18,7 +17,6 @@ class User {
     this.personalTrainerId,
   });
 
-  // Converter para Map (para salvar no Firestore)
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -29,7 +27,6 @@ class User {
     };
   }
 
-  // Criar User a partir de Map (para ler do Firestore)
   factory User.fromMap(Map<String, dynamic> map, String uid) {
     return User(
       uid: uid,
@@ -41,7 +38,6 @@ class User {
     );
   }
 
-  // Criar cópia com modificações
   User copyWith({
     String? uid,
     String? name,
@@ -60,7 +56,6 @@ class User {
     );
   }
 
-  // Helpers de permissão
   bool get isStudent => role.isStudent;
   bool get isPersonalTrainer => role.isPersonalTrainer;
   bool get canCreateExercises => role.canCreateExercises;

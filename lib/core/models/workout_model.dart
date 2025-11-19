@@ -2,7 +2,7 @@ class WorkoutModel {
   final String id;
   final String name;
   final String studentId;
-  final String createdBy; // Personal Trainer ID
+  final String createdBy;
   final List<WorkoutExercise> exercises;
   final DateTime createdAt;
   final DateTime? updatedAt;

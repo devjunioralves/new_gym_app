@@ -17,7 +17,6 @@ class Exercise {
     required this.instructions,
   });
 
-  // Converter para Map (para salvar no Firestore)
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -29,7 +28,6 @@ class Exercise {
     };
   }
 
-  // Criar Exercise a partir de Map (para ler do Firestore)
   factory Exercise.fromMap(Map<String, dynamic> map, String id) {
     return Exercise(
       id: id,
@@ -42,7 +40,6 @@ class Exercise {
     );
   }
 
-  // Criar cópia com modificações
   Exercise copyWith({
     String? id,
     String? name,

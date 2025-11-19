@@ -1,4 +1,3 @@
-// lib/features/home/presentation/widgets/exercise_card.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,7 +17,6 @@ class ExerciseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navega para a tela de detalhes usando o nome como "ID"
         context.go('/exercise/$exerciseName');
       },
       child: Container(
@@ -37,10 +35,7 @@ class ExerciseCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundImage: AssetImage(imageUrl),
-            ),
+            CircleAvatar(radius: 24, backgroundImage: AssetImage(imageUrl)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -48,7 +43,10 @@ class ExerciseCard extends StatelessWidget {
                 children: [
                   Text(
                     exerciseName,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(seriesReps, style: const TextStyle(fontSize: 14)),
                 ],

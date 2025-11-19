@@ -1,25 +1,20 @@
-// lib/features/auth/presentation/providers/auth_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:new_gym_app/core/models/user_model.dart';
 import 'package:new_gym_app/core/models/user_role.dart';
 import 'package:new_gym_app/core/services/firebase_auth_service.dart';
 
-// Provider do serviço Firebase
 final firebaseAuthServiceProvider = Provider<FirebaseAuthService>((ref) {
   return FirebaseAuthService();
 });
 
-// StreamProvider que escuta mudanças de autenticação
 final authStateProvider = StreamProvider<User?>((ref) {
   final authService = ref.watch(firebaseAuthServiceProvider);
   return authService.authStateChanges;
 });
 
-// Notifier para ações de autenticação
 class AuthNotifier extends Notifier<AsyncValue<User?>> {
   @override
   AsyncValue<User?> build() {
-    // Escuta o stream de autenticação
     final authState = ref.watch(authStateProvider);
     return authState.when(
       data: (user) => AsyncValue.data(user),
@@ -36,7 +31,7 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
       state = AsyncValue.data(user);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
-      rethrow; // Re-lança para tratamento na UI
+      rethrow;
     }
   }
 
@@ -53,7 +48,7 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
       state = AsyncValue.data(user);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
-      rethrow; // Re-lança para tratamento na UI
+      rethrow;
     }
   }
 
@@ -90,7 +85,6 @@ final authProvider = NotifierProvider<AuthNotifier, AsyncValue<User?>>(
   AuthNotifier.new,
 );
 
-// Provider auxiliar para obter o usuário atual de forma síncrona
 final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(authProvider).value;
 });

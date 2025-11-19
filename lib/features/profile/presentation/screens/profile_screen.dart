@@ -1,4 +1,3 @@
-// lib/features/profile/presentation/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:new_gym_app/core/shared_widgets/app_footer.dart';
@@ -19,7 +18,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Lê o usuário atual do currentUserProvider
     final user = ref.read(currentUserProvider);
     _nameController = TextEditingController(text: user?.name ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
@@ -34,7 +32,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _saveProfile() {
     if (_formKey.currentState!.validate()) {
-      // MUDANÇA 2: Chamamos o método de atualização usando `authProvider.notifier`
       ref
           .read(authProvider.notifier)
           .updateUserProfile(_nameController.text, _emailController.text);
@@ -47,11 +44,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Assiste ao usuário atual
     final user = ref.watch(currentUserProvider);
     final authState = ref.watch(authProvider);
 
-    // Mostra loading enquanto verifica autenticação
     if (authState.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -67,7 +62,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // --- Seção do Avatar ---
             CircleAvatar(
               radius: 60,
               backgroundImage: AssetImage(user.photoUrl),
@@ -78,7 +72,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Text(user.email, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 32),
 
-            // --- Formulário de Edição ---
             Form(
               key: _formKey,
               child: Column(

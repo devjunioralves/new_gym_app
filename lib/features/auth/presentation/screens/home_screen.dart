@@ -1,4 +1,3 @@
-// lib/features/home/presentation/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,43 +8,41 @@ import 'package:new_gym_app/features/auth/presentation/providers/auth_provider.d
 import 'package:new_gym_app/features/exercise_detail/presentation/providers/exercise_provider.dart';
 import 'package:new_gym_app/features/home/presentation/widgets/exercise_card.dart';
 
-// --- Providers para a Lógica da HomeScreen ---
-
-// MUDANÇA 1: Criamos um Notifier para o estado da categoria selecionada.
 class SelectedCategoryNotifier extends Notifier<String?> {
   @override
   String? build() {
-    // O estado inicial é `null`, representando "Todos"
     return null;
   }
 
-  // Método público para alterar a categoria
   void selectCategory(String? category) {
     state = category;
   }
 }
 
-// MUDANÇA 2: O antigo StateProvider agora é um NotifierProvider.
 final selectedCategoryProvider =
     NotifierProvider<SelectedCategoryNotifier, String?>(
       SelectedCategoryNotifier.new,
     );
 
-// Este provider "computado" não muda, pois ele apenas lê o estado dos outros.
-final filteredExerciseListProvider = Provider<List<Exercise>>((ref) {
+final filteredExerciseListProvider = Provider<AsyncValue<List<Exercise>>>((
+  ref,
+) {
   final exerciseListAsync = ref.watch(exerciseListProvider);
-  // Ele assiste ao novo provider, mas o resultado (o estado) é o mesmo.
   final selectedCategory = ref.watch(selectedCategoryProvider);
 
-  if (exerciseListAsync.isLoading || exerciseListAsync.hasError) {
-    return [];
-  }
-  final exercises = exerciseListAsync.value!;
-  if (selectedCategory == null) {
-    return exercises;
-  } else {
-    return exercises.where((ex) => ex.workoutType == selectedCategory).toList();
-  }
+  return exerciseListAsync.when(
+    data: (exercises) {
+      if (selectedCategory == null) {
+        return AsyncValue.data(exercises);
+      } else {
+        return AsyncValue.data(
+          exercises.where((ex) => ex.workoutType == selectedCategory).toList(),
+        );
+      }
+    },
+    loading: () => const AsyncValue.loading(),
+    error: (err, stack) => AsyncValue.error(err, stack),
+  );
 });
 
 class HomeScreen extends ConsumerWidget {
@@ -53,18 +50,15 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Usa o currentUserProvider para obter o usuário
     final user = ref.watch(currentUserProvider);
     final authState = ref.watch(authProvider);
 
-    // Escuta mudanças no estado de autenticação
     ref.listen(authProvider, (_, next) {
       next.whenData((user) {
         if (user == null) context.go('/login');
       });
     });
 
-    // Mostra loading enquanto verifica autenticação
     if (authState.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -168,8 +162,6 @@ class HomeScreen extends ConsumerWidget {
             label: Text(category ?? 'Todos'),
             selected: isSelected,
             onSelected: (selected) {
-              // MUDANÇA 3: Em vez de modificar o `.state` diretamente,
-              // chamamos o método que criamos no nosso Notifier.
               ref
                   .read(selectedCategoryProvider.notifier)
                   .selectCategory(category);
@@ -186,24 +178,31 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildExerciseList(BuildContext context, WidgetRef ref) {
-    final filteredList = ref.watch(filteredExerciseListProvider);
+    final filteredListAsync = ref.watch(filteredExerciseListProvider);
 
-    if (filteredList.isEmpty) {
-      return const Center(child: Text('Nenhum exercício encontrado.'));
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      itemCount: filteredList.length,
-      itemBuilder: (context, index) {
-        final exercise = filteredList[index];
-        return ExerciseCard(
-          exerciseName: exercise.name,
-          seriesReps: '${exercise.series} séries x ${exercise.reps} repetições',
-          imageUrl: exercise.imageUrl,
+    return filteredListAsync.when(
+      data: (filteredList) {
+        if (filteredList.isEmpty) {
+          return const Center(child: Text('Nenhum exercício encontrado.'));
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          itemCount: filteredList.length,
+          itemBuilder: (context, index) {
+            final exercise = filteredList[index];
+            return ExerciseCard(
+              exerciseName: exercise.name,
+              seriesReps:
+                  '${exercise.series} séries x ${exercise.reps} repetições',
+              imageUrl: exercise.imageUrl,
+            );
+          },
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
         );
       },
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) =>
+          Center(child: Text('Erro ao carregar exercícios: $err')),
     );
   }
 }

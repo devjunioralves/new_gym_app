@@ -1,11 +1,9 @@
-// lib/features/auth/presentation/screens/register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:new_gym_app/core/models/user_role.dart';
 import 'package:new_gym_app/features/auth/presentation/providers/auth_provider.dart';
 
-// MUDANÇA 1: Convertido para ConsumerStatefulWidget para gerenciar o estado do formulário
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -19,7 +17,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  UserRole _selectedRole = UserRole.student; // Valor padrão: Aluno
+  UserRole _selectedRole = UserRole.student;
 
   @override
   void dispose() {
@@ -31,7 +29,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   void _submitRegister() {
-    // Valida o formulário antes de prosseguir
     if (_formKey.currentState!.validate()) {
       ref
           .read(authProvider.notifier)
@@ -46,7 +43,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Escuta mudanças no estado de autenticação
     ref.listen(authProvider, (previous, next) {
       next.whenData((user) {
         if (user != null) {
@@ -60,7 +56,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          // Adicionado um Widget Form para validação
           child: Form(
             key: _formKey,
             child: Column(
@@ -116,7 +111,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                // Seleção de tipo de usuário
                 DropdownButtonFormField<UserRole>(
                   initialValue: _selectedRole,
                   decoration: const InputDecoration(

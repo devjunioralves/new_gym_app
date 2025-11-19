@@ -27,7 +27,9 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.metadata
 .pub-cache/
 .pub/
 /build/
@@ -43,3 +45,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase sensitive files
+**/google-services.json
+**/GoogleService-Info.plist
+firebase_options.dart
+
+# iOS/macOS generated files
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/.symlinks/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/.symlinks/

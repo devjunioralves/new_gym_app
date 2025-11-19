@@ -1,10 +1,8 @@
-// lib/features/auth/presentation/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:new_gym_app/features/auth/presentation/providers/auth_provider.dart';
 
-// MUDANÇA 1: Convertido para ConsumerStatefulWidget para gerenciar os controllers
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -13,13 +11,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  // Controllers para capturar o input do usuário
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    // Limpa os controllers quando o widget é removido da árvore
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -27,11 +23,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Escuta mudanças no estado de autenticação
     ref.listen(authProvider, (previous, next) {
       next.whenData((user) {
         if (user != null) {
-          // Se o usuário logou, vai para a home
           context.go('/');
         }
       });
@@ -67,7 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
-                  controller: _emailController, // Conectado ao controller
+                  controller: _emailController,
                   decoration: const InputDecoration(
                     labelText: 'E-mail',
                     filled: true,
@@ -77,7 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _passwordController, // Conectado ao controller
+                  controller: _passwordController,
                   obscureText: true,
                   decoration: const InputDecoration(
                     labelText: 'Senha',
@@ -89,8 +83,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ElevatedButton(
                   child: const Text('Acessar'),
                   onPressed: () {
-                    // MUDANÇA 3: Chama o método de login usando `authProvider.notifier`
-                    // e os valores dos controllers
                     ref
                         .read(authProvider.notifier)
                         .login(_emailController.text, _passwordController.text);

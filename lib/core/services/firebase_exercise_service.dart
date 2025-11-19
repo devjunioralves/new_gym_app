@@ -7,7 +7,6 @@ class FirebaseExerciseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collectionName = 'exercises';
 
-  // Buscar todos os exercícios
   Future<List<Exercise>> getAllExercises() async {
     try {
       final snapshot = await _firestore.collection(_collectionName).get();
@@ -19,7 +18,14 @@ class FirebaseExerciseService {
     }
   }
 
-  // Buscar exercício por nome
+  Stream<List<Exercise>> getAllExercisesStream() {
+    return _firestore.collection(_collectionName).snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Exercise.fromMap(doc.data(), doc.id))
+          .toList();
+    });
+  }
+
   Future<Exercise> getExerciseByName(String name) async {
     try {
       final snapshot = await _firestore
@@ -39,7 +45,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Buscar exercício por ID
   Future<Exercise> getExerciseById(String id) async {
     try {
       final doc = await _firestore.collection(_collectionName).doc(id).get();
@@ -54,7 +59,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Buscar exercícios por categoria (com stream para atualizações em tempo real)
   Stream<List<Exercise>> getExercisesByCategory(String? category) {
     Query query = _firestore.collection(_collectionName);
 
@@ -72,7 +76,6 @@ class FirebaseExerciseService {
     });
   }
 
-  // Adicionar exercício (útil para popular o banco inicialmente)
   Future<String> addExercise(Exercise exercise) async {
     try {
       final docRef = await _firestore
@@ -84,7 +87,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Criar novo exercício (simplificado para criação via formulário)
   Future<String> createExercise({
     required String name,
     required String workoutType,
@@ -95,7 +97,7 @@ class FirebaseExerciseService {
   }) async {
     try {
       final exercise = Exercise(
-        id: '', // Será gerado pelo Firestore
+        id: '',
         name: name,
         workoutType: workoutType,
         series: series,
@@ -113,7 +115,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Atualizar exercício
   Future<void> updateExercise(String id, Exercise exercise) async {
     try {
       await _firestore
@@ -125,7 +126,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Deletar exercício
   Future<void> deleteExercise(String id) async {
     try {
       await _firestore.collection(_collectionName).doc(id).delete();
@@ -134,10 +134,8 @@ class FirebaseExerciseService {
     }
   }
 
-  // Popular banco com exercícios iniciais
   Future<void> seedExercises() async {
     try {
-      // Verifica se já existem exercícios
       final snapshot = await _firestore
           .collection(_collectionName)
           .limit(1)
@@ -147,7 +145,6 @@ class FirebaseExerciseService {
         return;
       }
 
-      // Lista de exercícios iniciais
       final exercises = [
         Exercise(
           id: '',
@@ -229,7 +226,6 @@ class FirebaseExerciseService {
         ),
       ];
 
-      // Adiciona cada exercício
       for (final exercise in exercises) {
         await addExercise(exercise);
       }
@@ -240,9 +236,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // ===== Métodos para gerenciar atribuição de exercícios a alunos =====
-
-  // Atribuir exercício a um aluno
   Future<void> assignExerciseToStudent({
     required String studentId,
     required String exerciseId,
@@ -269,10 +262,8 @@ class FirebaseExerciseService {
     }
   }
 
-  // Buscar exercícios de um aluno específico
   Future<List<Exercise>> getStudentExercises(String studentId) async {
     try {
-      // Busca os IDs dos exercícios atribuídos ao aluno
       final userExercisesSnapshot = await _firestore
           .collection('user_exercises')
           .where('userId', isEqualTo: studentId)
@@ -282,12 +273,10 @@ class FirebaseExerciseService {
         return [];
       }
 
-      // Extrai os IDs dos exercícios
       final exerciseIds = userExercisesSnapshot.docs
           .map((doc) => doc.data()['exerciseId'] as String)
           .toList();
 
-      // Busca os exercícios completos
       final exercises = <Exercise>[];
       for (final exerciseId in exerciseIds) {
         final exerciseDoc = await _firestore
@@ -305,7 +294,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Buscar atribuições de exercícios de um aluno com detalhes
   Future<List<UserExercise>> getStudentExerciseAssignments(
     String studentId,
   ) async {
@@ -323,7 +311,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Remover atribuição de exercício
   Future<void> removeExerciseAssignment(String assignmentId) async {
     try {
       await _firestore.collection('user_exercises').doc(assignmentId).delete();
@@ -332,7 +319,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Buscar alunos de um personal trainer específico
   Future<List<User>> getStudentsByPersonal(String personalId) async {
     try {
       final snapshot = await _firestore
@@ -348,12 +334,22 @@ class FirebaseExerciseService {
     }
   }
 
-  // Buscar todos os alunos (DEPRECATED - usar getStudentsByPersonal)
+  Stream<List<User>> getStudentsByPersonalStream(String personalId) {
+    return _firestore
+        .collection('users')
+        .where('personalTrainerId', isEqualTo: personalId)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => User.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
   Future<List<User>> getAllStudents() async {
     try {
       final snapshot = await _firestore.collection('users').get();
 
-      // Filtra apenas alunos no código (evita necessidade de índice)
       return snapshot.docs
           .where((doc) => doc.data()['role'] == 'student')
           .map((doc) => User.fromMap(doc.data(), doc.id))
@@ -363,7 +359,6 @@ class FirebaseExerciseService {
     }
   }
 
-  // Stream de exercícios de um aluno (atualização em tempo real)
   Stream<List<Exercise>> studentExercisesStream(String studentId) {
     return _firestore
         .collection('user_exercises')

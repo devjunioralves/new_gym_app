@@ -6,18 +6,15 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 
 final exerciseServiceProvider = Provider((ref) => FirebaseExerciseService());
 
-// Provider para listar alunos do personal logado
-final studentsListProvider = FutureProvider<List<User>>((ref) async {
+final studentsListProvider = StreamProvider<List<User>>((ref) {
   final service = ref.watch(exerciseServiceProvider);
   final currentUser = ref.watch(currentUserProvider);
 
-  if (currentUser == null) return [];
+  if (currentUser == null) return Stream.value([]);
 
-  // Busca apenas alunos vinculados ao personal logado
-  return await service.getStudentsByPersonal(currentUser.uid);
+  return service.getStudentsByPersonalStream(currentUser.uid);
 });
 
-// Notifier para o estado da busca
 class SearchQueryNotifier extends Notifier<String> {
   @override
   String build() => '';
@@ -25,7 +22,6 @@ class SearchQueryNotifier extends Notifier<String> {
   void updateQuery(String query) => state = query;
 }
 
-// Provider para buscar alunos (com filtro)
 final searchStudentsProvider = NotifierProvider<SearchQueryNotifier, String>(
   SearchQueryNotifier.new,
 );

@@ -23,7 +23,6 @@ class _ManageExercisesScreenState extends ConsumerState<ManageExercisesScreen> {
     final exercisesAsync = ref.watch(exerciseListProvider);
     final studentsAsync = ref.watch(allStudentsProvider);
 
-    // Apenas personal trainers podem acessar
     if (user == null || !user.isPersonalTrainer) {
       return Scaffold(
         appBar: AppBar(title: const Text('Acesso Negado')),
@@ -37,7 +36,6 @@ class _ManageExercisesScreenState extends ConsumerState<ManageExercisesScreen> {
       appBar: AppBar(title: const Text('Gerenciar Treinos')),
       body: Column(
         children: [
-          // Seleção de aluno
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: studentsAsync.when(
@@ -77,7 +75,6 @@ class _ManageExercisesScreenState extends ConsumerState<ManageExercisesScreen> {
             ),
           ),
 
-          // Lista de exercícios disponíveis
           Expanded(
             child: exercisesAsync.when(
               data: (exercises) {
@@ -124,7 +121,6 @@ class _ManageExercisesScreenState extends ConsumerState<ManageExercisesScreen> {
             ),
           ),
 
-          // Botão para atribuir exercícios
           if (_selectedStudentId != null && _selectedExerciseIds.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -156,7 +152,6 @@ class _ManageExercisesScreenState extends ConsumerState<ManageExercisesScreen> {
     try {
       final service = ref.read(firebaseExerciseServiceProvider);
 
-      // Atribui cada exercício selecionado
       for (final exerciseId in _selectedExerciseIds) {
         await service.assignExerciseToStudent(
           studentId: _selectedStudentId!,

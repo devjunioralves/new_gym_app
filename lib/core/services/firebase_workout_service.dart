@@ -5,7 +5,6 @@ import '../models/workout_model.dart';
 class FirebaseWorkoutService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Criar novo treino
   Future<String> createWorkout({
     required String name,
     required String studentId,
@@ -21,7 +20,6 @@ class FirebaseWorkoutService {
         'updatedAt': null,
       });
 
-      // Atualizar com o ID gerado
       await docRef.update({'id': docRef.id});
 
       return docRef.id;
@@ -30,7 +28,6 @@ class FirebaseWorkoutService {
     }
   }
 
-  // Adicionar exercício ao treino
   Future<void> addExerciseToWorkout({
     required String workoutId,
     required String exerciseId,
@@ -55,7 +52,6 @@ class FirebaseWorkoutService {
     }
   }
 
-  // Remover exercício do treino
   Future<void> removeExerciseFromWorkout({
     required String workoutId,
     required String exerciseId,
@@ -78,7 +74,6 @@ class FirebaseWorkoutService {
     }
   }
 
-  // Atualizar treino completo
   Future<void> updateWorkout({
     required String workoutId,
     String? name,
@@ -100,7 +95,17 @@ class FirebaseWorkoutService {
     }
   }
 
-  // Deletar treino
+  Future<void> updateWorkoutName(String workoutId, String name) async {
+    try {
+      await _firestore.collection('workouts').doc(workoutId).update({
+        'name': name,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      throw Exception('Erro ao atualizar nome do treino: $e');
+    }
+  }
+
   Future<void> deleteWorkout(String workoutId) async {
     try {
       await _firestore.collection('workouts').doc(workoutId).delete();
@@ -109,7 +114,6 @@ class FirebaseWorkoutService {
     }
   }
 
-  // Buscar treinos de um aluno
   Future<List<WorkoutModel>> getStudentWorkouts(String studentId) async {
     try {
       final snapshot = await _firestore
@@ -126,7 +130,6 @@ class FirebaseWorkoutService {
     }
   }
 
-  // Stream de treinos do aluno (tempo real)
   Stream<List<WorkoutModel>> studentWorkoutsStream(String studentId) {
     return _firestore
         .collection('workouts')
@@ -140,7 +143,6 @@ class FirebaseWorkoutService {
         );
   }
 
-  // Buscar treinos criados por um personal
   Future<List<WorkoutModel>> getWorkoutsByPersonal(String personalId) async {
     try {
       final snapshot = await _firestore
@@ -157,7 +159,6 @@ class FirebaseWorkoutService {
     }
   }
 
-  // Buscar um treino específico
   Future<WorkoutModel?> getWorkout(String workoutId) async {
     try {
       final doc = await _firestore.collection('workouts').doc(workoutId).get();

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "310316534784",
+    "project_id": "newgymapp-f3667",
+    "storage_bucket": "newgymapp-f3667.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:310316534784:android:a72909d17c787d8b401ce5",
+        "android_client_info": {
+          "package_name": "com.example.new_gym_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASgFoTspHWq6CfnFco_5WlAnwAriiGnD0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

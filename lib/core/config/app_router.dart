@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:new_gym_app/features/anamnesis/presentation/screens/anamnesis_insights_screen.dart';
+import 'package:new_gym_app/features/anamnesis/presentation/screens/anamnesis_list_screen.dart';
+import 'package:new_gym_app/features/anamnesis/presentation/screens/answer_anamnesis_screen.dart';
+import 'package:new_gym_app/features/anamnesis/presentation/screens/create_anamnesis_screen.dart';
 import 'package:new_gym_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:new_gym_app/features/auth/presentation/screens/register_screen.dart';
 import 'package:new_gym_app/features/exercise_detail/presentation/screens/exercise_detail_screen.dart';
@@ -92,6 +96,29 @@ final routerProvider = Provider<GoRouter>((ref) {
             exerciseName: exerciseName,
             workoutName: 'Peito', // Exemplo
           );
+        },
+      ),
+      // Rotas de Anamnese
+      GoRoute(
+        path: '/anamnesis-list',
+        builder: (context, state) => const AnamnesisListScreen(),
+      ),
+      GoRoute(
+        path: '/create-anamnesis',
+        builder: (context, state) => const CreateAnamnesisScreen(),
+      ),
+      GoRoute(
+        path: '/answer-anamnesis/:anamnesisId',
+        builder: (context, state) {
+          final anamnesisId = state.pathParameters['anamnesisId']!;
+          return AnswerAnamnesisScreen(anamnesisId: anamnesisId);
+        },
+      ),
+      GoRoute(
+        path: '/anamnesis-insights/:anamnesisId',
+        builder: (context, state) {
+          final anamnesisId = state.pathParameters['anamnesisId']!;
+          return AnamnesisInsightsScreen(anamnesisId: anamnesisId);
         },
       ),
     ],

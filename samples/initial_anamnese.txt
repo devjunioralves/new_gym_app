@@ -1,0 +1,40 @@
+Email
+Nome
+Data de nascimento
+Altura
+Peso
+Genero
+Se do sexo feminino, está grávida?
+Qual seu trabalho? Em qual horário?
+Estuda? Em qual horário?
+Telefone
+Voce sabe sua pressão arterial? Se sim, qual é?
+Você está inativo fisicamente (isto é, você faz menos que 90 min por semana de atividade vigorosa ou 120 min por semana de atividades moderadas?
+Você fuma ou parou de fumar há menos de 6 meses?
+Faz uso de bebida alcoólica? Com que frequência?
+Pratica alguma atividade física diária ou de fim-de-semana, além da musculação ? Explique (corrida, artes marciais, etc).
+Treina musculação a quanto tempo?
+Qual o seu Objetivo?
+Você geralmente segue alguma rotina alimentar em suas refeições?
+Quais as refeições que você normalmente realiza ao dia?
+Dorme e acorda que horas?
+Você se sente cansado?
+De uma nota (0 a 10) referente ao quanto você gosta de frequentar a academia e/ou treinar
+De 0 a 10 quanto você acha que precisa mudar na sua rotina para alcançar seu objetivo?
+De 0 a 10 Quanto está disposto a se dedicar para realizar a sua frequência semanal predeterminada de treino para alcançar seu objetivo?
+Você tem dúvidas quanto a segurança de se exercitar?
+Fatores de risco para doença coronariana
+Foi referido pelo seu médico algum problema ósseo, articular ou muscular que possa ser agravado pela prática de atividades físicas?
+Você já se lesionou praticando exercícios?
+Alguma vez um médico lhe disse que você possui um problema do coração e lhe recomendou que só fizesse atividade física sob supervisão médica?
+Você sente dor no peito, causada pela prática de atividade física?
+Você sentiu dor no peito no último mês?
+Você tende a perder a consciência ou cair, como resultado de tonteira ou desmaio?
+Você tem algum problema ósseo ou muscular que poderia ser agravado com a prática de atividade física?
+Algum médico já lhe recomendou o uso de medicamentos para a sua pressão arterial, para circulação ou coração?
+Você tem consciência, através da sua própria experiência ou aconselhamento médico, de alguma outra razão física que impeça sua prática de atividade física sem supervisão médica?
+Toma algum medicamento? Qual?
+Toma algum Suplemento? Qual?
+Você concorda com o uso de imagem, seja para melhora da sua performance ou até divulgação?
+Qual o seu pensamento sobre utilização de imagens para realização de avaliação? (fotos que não serão divulgadas, utilizadas apenas para melhor adequar o treinamento para você)
+Descreva a sua meta para daqui 1 mês, e qual sua disponibilidade durante a semana para se comprometer com alguma atividade física extra

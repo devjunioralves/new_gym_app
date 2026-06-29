@@ -1,700 +1,368 @@
 # Arquitetura do New Gym App
 
 ## Índice
-- [Estrutura de Pastas](#estrutura-de-pastas)
-- [Padrões Arquiteturais](#padrões-arquiteturais)
-- [Fluxo de Dados](#fluxo-de-dados)
-- [Modelo de Dados](#modelo-de-dados)
-- [Padrões de Projeto](#padrões-de-projeto)
+- [Visão Geral do Sistema](#visão-geral-do-sistema)
+- [C4 Model](#c4-model)
+- [Arquitetura de Pastas](#arquitetura-de-pastas)
+- [Fluxo da Anamnese com IA](#fluxo-da-anamnese-com-ia)
+- [Modelo de Dados (Firestore)](#modelo-de-dados-firestore)
+- [Gerenciamento de Estado](#gerenciamento-de-estado)
+- [Decisões Arquiteturais](#decisões-arquiteturais)
 
 ---
 
-## Estrutura de Pastas
+## Visão Geral do Sistema
 
-O projeto segue a arquitetura **Feature-First**, onde cada funcionalidade é um módulo independente:
+O New Gym App é uma aplicação Flutter com backend Firebase e integração com IA (Google Gemini). A arquitetura é organizada em **feature-first** com três camadas bem definidas: Presentation, Domain e Data.
+
+---
+
+## C4 Model
+
+### Nível 1 — Contexto do Sistema
+
+```mermaid
+graph TD
+    PT["👨‍💼 Personal Trainer\nGerencia alunos,\napprova treinos"]
+    ALU["🏃 Aluno\nResponde anamnese,\nvisualiza treinos"]
+    APP["🏋️ New Gym App\nSistema de gestão de treinos\ncom Inteligência Artificial"]
+    GEM["🤖 Google Gemini API\nAnálise de saúde e\ngeração de sugestões\n(ACSM/NSCA)"]
+    FB["🔥 Firebase\nAuth + Firestore\n(Backend as a Service)"]
+
+    PT -->|"Cria anamneses,\naprova treinos"| APP
+    ALU -->|"Responde anamnese,\nvê treinos"| APP
+    APP -->|"Envia contexto clínico,\nrecebe análise e sugestões"| GEM
+    APP -->|"Autentica usuários,\nlê e escreve dados"| FB
+```
+
+### Nível 2 — Containers
+
+```mermaid
+graph TD
+    subgraph Usuários
+        PT["👨‍💼 Personal Trainer"]
+        ALU["🏃 Aluno"]
+    end
+
+    subgraph "New Gym App (Flutter)"
+        UI["📱 Interface Flutter\nDart / Material Design 3"]
+        STATE["⚡ Gerenciamento de Estado\nRiverpod 3.0"]
+        NAV["🧭 Navegação\nGoRouter 16"]
+    end
+
+    subgraph "Firebase (BaaS)"
+        AUTH["🔐 Firebase Auth\nAutenticação de usuários"]
+        DB["🗄️ Cloud Firestore\nBanco de dados NoSQL\nem tempo real"]
+    end
+
+    subgraph "Google AI"
+        GEMINI["🤖 Gemini gemini-3.5-flash\nAnálise de anamnese\ne RAG de treinos"]
+    end
+
+    PT --> UI
+    ALU --> UI
+    UI <--> STATE
+    UI --> NAV
+    STATE -->|"Login / Cadastro"| AUTH
+    STATE -->|"CRUD de dados"| DB
+    STATE -->|"Análise + Sugestões"| GEMINI
+```
+
+### Nível 3 — Componentes principais
+
+```mermaid
+graph LR
+    subgraph "Feature: Anamnesis"
+        ANS["AnswerAnamnesisScreen"]
+        INS["AnamnesisInsightsScreen"]
+        LST["AnamnesisListScreen"]
+        PROV["AnamnesisProviders\n(Riverpod)"]
+    end
+
+    subgraph "Core: Services"
+        GS["GeminiService\nPerguntas dinâmicas\ne análise"]
+        RS["RAGWorkoutService\nSugestões ACSM/NSCA"]
+        FS["FirebaseAnamnesisService\nCRUD Firestore"]
+        ES["FirebaseExerciseService\nFindOrCreate exercícios"]
+    end
+
+    subgraph "Core: Models"
+        AM["Anamnesis"]
+        IM["AnamnesisInsights"]
+        WM["WorkoutSuggestion"]
+        EM["Exercise"]
+    end
+
+    ANS --> PROV
+    INS --> PROV
+    LST --> PROV
+    PROV --> GS
+    PROV --> RS
+    PROV --> FS
+    PROV --> ES
+    GS --> AM
+    RS --> WM
+    FS --> AM
+    FS --> IM
+    ES --> EM
+```
+
+---
+
+## Arquitetura de Pastas
+
+O projeto segue **Feature-First**: cada funcionalidade é um módulo independente com suas próprias telas, providers e lógica.
 
 ```
 lib/
-├── core/                      # Código compartilhado
-│   ├── config/               # Router, tema, constantes
-│   │   ├── app_router.dart
-│   │   ├── theme.dart
-│   │   └── constants.dart
-│   ├── models/               # Entidades de domínio
-│   │   ├── user.dart
-│   │   ├── exercise.dart
-│   │   ├── workout.dart
-│   │   ├── anamnesis.dart
-│   │   ├── anamnesis_insight.dart
-│   │   └── workout_suggestion.dart
-│   ├── services/             # Serviços compartilhados
-│   │   ├── firebase_service.dart
-│   │   ├── gemini_service.dart
-│   │   └── rag_workout_service.dart
-│   ├── shared_widgets/       # Componentes reutilizáveis
-│   │   ├── custom_button.dart
-│   │   ├── loading_indicator.dart
-│   │   └── error_message.dart
-│   └── utils/                # Helpers, extensões
-│       ├── validators.dart
-│       └── formatters.dart
+├── core/                          # Código compartilhado entre features
+│   ├── config/
+│   │   ├── app_router.dart        # Rotas declarativas (GoRouter)
+│   │   └── app_theme.dart         # Tema Material Design 3
+│   ├── models/                    # Entidades de domínio
+│   │   ├── user_model.dart
+│   │   ├── user_role.dart
+│   │   ├── exercise_model.dart
+│   │   ├── anamnesis_model.dart
+│   │   ├── anamnesis_insights_model.dart
+│   │   └── workout_suggestion_model.dart
+│   ├── services/                  # Acesso a dados e APIs externas
+│   │   ├── firebase_auth_service.dart
+│   │   ├── firebase_anamnesis_service.dart
+│   │   ├── firebase_exercise_service.dart
+│   │   ├── firebase_workout_service.dart
+│   │   ├── gemini_service.dart        # Análise de anamnese (IA)
+│   │   └── rag_workout_service.dart   # Sugestões de treino (IA + RAG)
+│   ├── shared_widgets/
+│   │   ├── app_footer.dart        # Navegação inferior (role-aware)
+│   │   └── user_avatar.dart       # Avatar com iniciais
+│   └── utils/
+│       └── anamnesis_template.dart  # Perguntas base + por sexo
 │
-├── features/                  # Módulos de funcionalidades
-│   ├── auth/                 # Autenticação
-│   │   ├── presentation/
-│   │   │   ├── screens/
-│   │   │   │   ├── login_screen.dart
-│   │   │   │   └── register_screen.dart
-│   │   │   └── providers/
-│   │   │       └── auth_provider.dart
-│   │   └── README.md
-│   │
-│   ├── students/             # Gestão de alunos
-│   │   ├── presentation/
-│   │   │   ├── screens/
-│   │   │   │   ├── students_list_screen.dart
-│   │   │   │   ├── student_detail_screen.dart
-│   │   │   │   └── add_student_screen.dart
-│   │   │   └── providers/
-│   │   │       └── students_provider.dart
-│   │   └── README.md
-│   │
-│   ├── exercises/            # Biblioteca de exercícios
-│   │   ├── presentation/
-│   │   │   ├── screens/
-│   │   │   │   ├── exercises_list_screen.dart
-│   │   │   │   └── exercise_detail_screen.dart
-│   │   │   └── providers/
-│   │   │       └── exercise_provider.dart
-│   │   └── README.md
-│   │
-│   ├── manage_exercises/     # CRUD de exercícios
-│   │   ├── presentation/
-│   │   │   ├── screens/
-│   │   │   │   ├── manage_exercises_screen.dart
-│   │   │   │   └── edit_exercise_screen.dart
-│   │   │   └── providers/
-│   │   │       └── manage_exercises_provider.dart
-│   │   └── README.md
-│   │
-│   ├── anamnesis/            # ⭐ Sistema de Anamnese IA
-│   │   ├── presentation/
-│   │   │   ├── screens/
-│   │   │   │   ├── anamnesis_list_screen.dart       # Lista todas anamneses
-│   │   │   │   ├── create_anamnesis_screen.dart     # Personal cria anamnese
-│   │   │   │   ├── answer_anamnesis_screen.dart     # Aluno responde
-│   │   │   │   └── anamnesis_insights_screen.dart   # Personal vê insights + sugestões
-│   │   │   └── providers/
-│   │   │       └── anamnesis_providers.dart
-│   │   └── README.md
-│   │
-│   ├── home/                 # Tela inicial
-│   │   ├── presentation/
-│   │   │   ├── screens/
-│   │   │   │   └── home_screen.dart
-│   │   │   └── providers/
-│   │   │       └── home_provider.dart
-│   │   └── README.md
-│   │
-│   └── profile/              # Perfil do usuário
-│       ├── presentation/
-│       │   ├── screens/
-│       │   │   └── profile_screen.dart
-│       │   └── providers/
-│       │       └── profile_provider.dart
-│       └── README.md
+├── features/
+│   ├── auth/                      # Login e cadastro
+│   ├── home/                      # Home diferente por role (PT vs aluno)
+│   ├── anamnesis/                 # ⭐ Fluxo central do app
+│   ├── students/                  # Gestão de alunos (PT)
+│   ├── profile/                   # Perfil e troca de senha
+│   └── exercise_detail/           # Biblioteca de exercícios
 │
-├── app.dart                  # Widget root do app
-└── main.dart                 # Entry point
+├── app.dart                       # MaterialApp.router + localizations
+└── main.dart                      # Firebase init + ProviderScope
 ```
 
 ---
 
-## Padrões Arquiteturais
+## Fluxo da Anamnese com IA
 
-### 1. Clean Architecture (Simplificada)
+Este é o fluxo mais complexo do sistema, envolvendo injeção dinâmica de perguntas e duas chamadas à API Gemini.
 
-Adaptamos a Clean Architecture para um escopo menor, mantendo separação de responsabilidades:
+```mermaid
+sequenceDiagram
+    actor PT as Personal Trainer
+    actor ALU as Aluno
+    participant APP as Flutter App
+    participant GEM as Gemini API
+    participant DB as Firestore
 
-```
-┌─────────────────────────────────────┐
-│         PRESENTATION                │
-│  (Screens + Riverpod Providers)     │
-│  - UI Components                    │
-│  - State Management                 │
-│  - Navigation                       │
-└──────────────┬──────────────────────┘
-               │ uses
-               ▼
-┌─────────────────────────────────────┐
-│           DOMAIN                    │
-│         (Models)                    │
-│  - Entities                         │
-│  - Business Rules                   │
-└──────────────┬──────────────────────┘
-               │ uses
-               ▼
-┌─────────────────────────────────────┐
-│            DATA                     │
-│      (Services)                     │
-│  - Firebase Service                 │
-│  - Gemini Service                   │
-│  - RAG Service                      │
-└─────────────────────────────────────┘
-```
+    PT->>APP: Cria anamnese para aluno
+    APP->>DB: Salva 22 perguntas base (q1–qh5)
+    APP-->>ALU: Anamnese disponível
 
-**Benefícios:**
-- ✅ Testabilidade: Cada camada pode ser testada isoladamente
-- ✅ Manutenibilidade: Mudanças em uma camada não afetam outras
-- ✅ Escalabilidade: Fácil adicionar novas features
-- ✅ Reutilização: Services e models compartilhados
+    ALU->>APP: Inicia anamnese
 
----
+    loop Perguntas base (q1–qh5)
+        APP->>ALU: Exibe pergunta
+        ALU->>APP: Responde
+        APP->>DB: Salva resposta
 
-### 2. State Management com Riverpod 3.0
+        alt Pergunta q2 (sexo biológico)
+            APP->>DB: Injeta qf1–qf7 (Feminino) ou qm1–qm3 (Masculino)
+        end
+    end
 
-Utilizamos diferentes tipos de providers para casos de uso específicos:
+    Note over APP,GEM: Todas as perguntas base respondidas
 
-#### **StreamProvider** - Dados em tempo real (Firestore)
-```dart
-final studentsProvider = StreamProvider<List<Student>>((ref) {
-  return FirebaseFirestore.instance
-    .collection('users')
-    .where('isStudent', isEqualTo: true)
-    .snapshots()
-    .map((snapshot) => snapshot.docs.map((doc) => Student.fromFirestore(doc)).toList());
-});
-```
+    APP->>GEM: Envia respostas base + data atual
+    GEM-->>APP: Retorna 3–5 perguntas diagnósticas personalizadas
+    APP->>DB: Adiciona perguntas dinâmicas à anamnese
 
-#### **FutureProvider** - Carregamento assíncrono único
-```dart
-final exercisesProvider = FutureProvider<List<Exercise>>((ref) async {
-  final snapshot = await FirebaseFirestore.instance.collection('exercises').get();
-  return snapshot.docs.map((doc) => Exercise.fromFirestore(doc)).toList();
-});
+    loop Perguntas diagnósticas (IA)
+        ALU->>APP: Responde
+        APP->>DB: Salva resposta
+    end
+
+    APP->>GEM: Envia anamnese completa para análise
+    GEM-->>APP: Retorna AnamnesisInsights (condições, nível, risco, recomendações)
+    APP->>DB: Salva insights + status = analyzed
+
+    PT->>APP: Visualiza insights do aluno
+    PT->>APP: Solicita sugestões de treino
+
+    APP->>GEM: Envia insights (RAG com ACSM/NSCA)
+    GEM-->>APP: Retorna WorkoutSuggestion com justificativas científicas
+    APP->>DB: Salva sugestão
+
+    PT->>APP: Revisa e edita sugestão (opcional)
+    PT->>APP: Aprova sugestão
+
+    loop Para cada exercício
+        APP->>DB: findOrCreate exercício na biblioteca
+        APP->>DB: Adiciona ao treino do aluno
+    end
+
+    APP-->>ALU: Treino disponível para visualização
 ```
 
-#### **NotifierProvider** - Ações e mutações
-```dart
-class AnamnesisAnswerNotifier extends Notifier<AsyncValue<void>> {
-  @override
-  AsyncValue<void> build() => const AsyncValue.data(null);
+### Injeção de Perguntas por Sexo Biológico
 
-  Future<void> saveAnswerAndGetNext(String anamnesisId, Answer answer) async {
-    state = const AsyncValue.loading();
-    try {
-      await _anamnesisService.saveAnswer(anamnesisId, answer);
-      state = const AsyncValue.data(null);
-    } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
-    }
-  }
-}
-```
-
-#### **Provider** - Dependências singleton
-```dart
-final geminiServiceProvider = Provider<GeminiService>((ref) {
-  return GeminiService(apiKey: 'YOUR_API_KEY');
-});
-```
-
----
-
-## Fluxo de Dados - Anamnese IA
-
-### Diagrama Completo
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     FLUXO DE ANAMNESE IA                        │
-└─────────────────────────────────────────────────────────────────┘
-
-1. CRIAÇÃO (Personal Trainer)
-   ┌──────────────────┐
-   │ CreateAnamnesis  │
-   │    Screen        │
-   └────────┬─────────┘
-            │ Personal seleciona aluno
-            ▼
-   ┌──────────────────┐
-   │ AnamnesisService │
-   └────────┬─────────┘
-            │ Cria documento com 37 perguntas base
-            ▼
-   ┌──────────────────┐
-   │   Firestore      │
-   │  /anamnesis/     │
-   │  {anamnesisId}   │
-   │  status: draft   │
-   └──────────────────┘
-
-2. RESPOSTA (Aluno)
-   ┌──────────────────┐
-   │ AnswerAnamnesis  │
-   │    Screen        │
-   └────────┬─────────┘
-            │ Aluno acessa via link
-            ▼
-   ┌──────────────────┐
-   │ Mostra pergunta  │
-   │   progressiva    │
-   └────────┬─────────┘
-            │ Aluno responde
-            ▼
-   ┌──────────────────┐
-   │  GeminiService   │
-   │  analyzeAnswer() │
-   └────────┬─────────┘
-            │ IA analisa resposta
-            ▼
-   ┌──────────────────────────────┐
-   │ Gera próxima pergunta?       │
-   ├─────────────┬────────────────┤
-   │ SIM         │ NÃO            │
-   │ (dinâmica)  │ (próxima base) │
-   └─────┬───────┴────────┬───────┘
-         │                │
-         ▼                ▼
-   ┌──────────┐    ┌──────────┐
-   │ Pergunta │    │ Pergunta │
-   │ IA ✨    │    │ Base     │
-   └────┬─────┘    └────┬─────┘
-        │               │
-        └───────┬───────┘
-                │ Salva resposta
-                ▼
-   ┌──────────────────┐
-   │   Firestore      │
-   │  answers: [...]  │
-   └──────────────────┘
-                │
-                │ Repete até completar
-                ▼
-
-3. ANÁLISE (IA)
-   ┌──────────────────┐
-   │ Aluno completa   │
-   │ última pergunta  │
-   └────────┬─────────┘
-            │ Trigger análise
-            ▼
-   ┌──────────────────┐
-   │  GeminiService   │
-   │  analyzeComplete │
-   │   Anamnesis()    │
-   └────────┬─────────┘
-            │ IA processa todas respostas
-            ▼
-   ┌──────────────────────────────────┐
-   │ Gera insights:                   │
-   │ • Summary                        │
-   │ • Fitness Level                  │
-   │ • Health Conditions              │
-   │ • Goals & Limitations            │
-   │ • Injury Risk Score              │
-   │ • Recommendations                │
-   └────────┬─────────────────────────┘
-            │ Salva insights
-            ▼
-   ┌──────────────────┐
-   │   Firestore      │
-   │  /insights/{id}  │
-   │  status: analyzed│
-   └──────────────────┘
-
-4. SUGESTÕES (Personal + IA + RAG)
-   ┌──────────────────┐
-   │ InsightsScreen   │
-   │ Tab: Sugestões   │
-   └────────┬─────────┘
-            │ Personal clica "Gerar Sugestões"
-            ▼
-   ┌──────────────────┐
-   │ RAGWorkoutService│
-   └────────┬─────────┘
-            │ 1. Busca insights
-            │ 2. Busca exercícios do Firestore
-            │ 3. Carrega guidelines (ACSM, NSCA)
-            ▼
-   ┌──────────────────────────────────┐
-   │  GeminiService                   │
-   │  generateWorkoutSuggestions()    │
-   │                                  │
-   │  Contexto:                       │
-   │  • Insights do aluno             │
-   │  • Exercícios disponíveis        │
-   │  • Guidelines científicas        │
-   └────────┬─────────────────────────┘
-            │ IA gera 3 sugestões completas
-            ▼
-   ┌──────────────────────────────────┐
-   │ Sugestão de Treino:              │
-   │ • Nome do treino                 │
-   │ • Exercises[] (séries, reps)     │
-   │ • Rationale (justificativa)      │
-   │ • Precautions (precauções)       │
-   │ • References (ACSM, NSCA)        │
-   └────────┬─────────────────────────┘
-            │ Salva sugestões
-            ▼
-   ┌──────────────────┐
-   │   Firestore      │
-   │  /workoutSugg... │
-   │  status: pending │
-   └──────────────────┘
-
-5. APROVAÇÃO (Personal)
-   ┌──────────────────┐
-   │ Personal revisa  │
-   │ sugestões        │
-   └────────┬─────────┘
-            │ Aprova sugestão
-            ▼
-   ┌──────────────────┐
-   │ Cria workout     │
-   │ baseado na       │
-   │ sugestão         │
-   └────────┬─────────┘
-            │
-            ▼
-   ┌──────────────────┐
-   │   Firestore      │
-   │  /workouts/{id}  │
-   │  studentId: ...  │
-   └──────────────────┘
+```mermaid
+flowchart TD
+    Q2["q2: Sexo biológico?"]
+    Q2 -->|Feminino| FEM["Injeta qf1–qf7\n- Gravidez / amamentação\n- Ciclo menstrual\n- Anticoncepcionais / TRH\n- SOP / endometriose\n- Osteoporose / densitometria\n- Complicações gestacionais"]
+    Q2 -->|Masculino| MAS["Injeta qm1–qm3\n- Hérnia inguinal/abdominal\n- Anabolizantes / TRT\n- Sintomas de alteração hormonal"]
+    Q2 -->|Prefiro não informar| NEU["Sem injeção adicional\nIA gera diagnóstico\ncompleto sem dados sexo-específicos"]
+    FEM --> AI["IA recebe perfil completo\ne gera diagnóstico"]
+    MAS --> AI
+    NEU --> AI
 ```
 
 ---
 
 ## Modelo de Dados (Firestore)
 
-### Collections Principais
-
-#### 1. **users** (usuários)
-```json
-{
-  "id": "user123",
-  "name": "João Silva",
-  "email": "joao@email.com",
-  "isStudent": true,
-  "personalId": "personal456",  // Se isStudent
-  "cref": "12345-G/SP",         // Se personal
-  "phone": "+5511999999999",
-  "createdAt": "2026-01-15T10:00:00Z"
-}
-```
-
-#### 2. **exercises** (biblioteca de exercícios)
-```json
-{
-  "id": "ex789",
-  "name": "Supino Reto",
-  "workoutType": "Peito",
-  "series": 3,
-  "reps": 12,
-  "instructions": "Deitado no banco...",
-  "imageUrl": "https://...",
-  "createdBy": "personal456"
-}
-```
-
-#### 3. **workouts** (treinos atribuídos)
-```json
-{
-  "id": "workout101",
-  "name": "Treino A - Peito e Tríceps",
-  "studentId": "user123",
-  "personalId": "personal456",
-  "exercises": [
-    {
-      "exerciseId": "ex789",
-      "series": 4,
-      "reps": 10,
-      "weight": 60,
-      "rest": "90s"
+```mermaid
+erDiagram
+    users {
+        string uid PK
+        string name
+        string email
+        string role "personalTrainer ou student"
+        string cref "somente PT"
+        string photoUrl
     }
-  ],
-  "createdAt": "2026-06-01T08:00:00Z"
-}
-```
 
-#### 4. **anamnesis** (anamneses)
-```json
-{
-  "id": "anam202",
-  "studentId": "user123",
-  "personalId": "personal456",
-  "status": "completed",  // draft | inProgress | completed | analyzed
-  "questions": [
-    {
-      "id": "q1",
-      "text": "Qual seu principal objetivo?",
-      "type": "multipleChoice",
-      "options": ["Emagrecimento", "Hipertrofia", "Condicionamento"],
-      "isDynamic": false
-    },
-    {
-      "id": "q38",
-      "text": "Você mencionou dor no joelho. Com que frequência?",
-      "type": "text",
-      "isDynamic": true  // ✨ Gerada pela IA
+    anamneses {
+        string id PK
+        string studentId FK
+        string personalId FK
+        string status "draft | inProgress | completed | analyzed"
+        array questions "AnamnesisQuestion[]"
+        array answers "AnamnesisAnswer[]"
+        datetime createdAt
+        datetime completedAt
+        datetime analyzedAt
     }
-  ],
-  "answers": [
-    {
-      "questionId": "q1",
-      "value": "Hipertrofia",
-      "answeredAt": "2026-06-10T14:30:00Z"
-    }
-  ],
-  "progress": 95.5,  // Porcentagem
-  "createdAt": "2026-06-10T10:00:00Z",
-  "completedAt": "2026-06-10T15:00:00Z"
-}
-```
 
-#### 5. **insights** (subcollection de anamnesis)
-```json
-{
-  "id": "insight303",
-  "anamnesisId": "anam202",
-  "summary": "Aluno com objetivo de hipertrofia, nível intermediário...",
-  "fitnessLevel": "intermediate",
-  "conditions": [
-    {
-      "name": "Dor no joelho direito",
-      "severity": "moderate",
-      "restrictions": ["Leg Press", "Agachamento Profundo"],
-      "notes": "Histórico de lesão no LCA"
+    insights {
+        string id PK
+        string anamnesisId FK
+        string summary
+        array conditions "HealthCondition[]"
+        array goals
+        array limitations
+        string fitnessLevel
+        float injuryRisk
+        object recommendations
     }
-  ],
-  "goals": ["Hipertrofia", "Aumento de força"],
-  "limitations": ["Mobilidade limitada no joelho"],
-  "injuryRisk": 35,  // 0-100
-  "recommendations": [
-    "Fortalecer quadríceps com amplitude reduzida",
-    "Incluir exercícios de mobilidade"
-  ],
-  "createdAt": "2026-06-10T15:05:00Z"
-}
-```
 
-#### 6. **workoutSuggestions** (sugestões de treino)
-```json
-{
-  "id": "sugg404",
-  "anamnesisId": "anam202",
-  "insightId": "insight303",
-  "name": "Treino Hipertrofia - Adaptado",
-  "exercises": [
-    {
-      "exerciseId": "ex789",
-      "name": "Supino Reto",
-      "series": 4,
-      "reps": "8-10",
-      "notes": "Amplitude completa, controle na descida"
-    },
-    {
-      "exerciseId": "ex790",
-      "name": "Cadeira Extensora",
-      "series": 3,
-      "reps": "12-15",
-      "notes": "Substituição do leg press devido à limitação no joelho"
+    workout_suggestions {
+        string id PK
+        string anamnesisId FK
+        string name
+        array exercises "ExerciseSuggestion[]"
+        string rationale
+        array precautions
+        array references
+        float confidence
+        bool approvedByPersonal
     }
-  ],
-  "rationale": "Treino focado em hipertrofia com exercícios que minimizam stress no joelho...",
-  "precautions": [
-    "Evitar agachamento profundo",
-    "Monitorar dor durante execução"
-  ],
-  "references": [
-    "ACSM Guidelines 2021 - Resistance Training Adaptations",
-    "NSCA - Exercise Selection for Knee Injuries"
-  ],
-  "status": "pending",  // pending | approved | rejected
-  "createdAt": "2026-06-11T09:00:00Z"
-}
+
+    workouts {
+        string id PK
+        string studentId FK
+        string createdBy FK
+        string name
+        array exercises "WorkoutExercise[]"
+        datetime createdAt
+    }
+
+    exercises {
+        string id PK
+        string name
+        string workoutType
+        int series
+        int reps
+        string instructions
+        string imageUrl
+    }
+
+    users ||--o{ anamneses : "aluno responde"
+    users ||--o{ anamneses : "personal cria"
+    anamneses ||--o| insights : "análise gera"
+    anamneses ||--o{ workout_suggestions : "IA gera"
+    workout_suggestions ||--o| workouts : "aprovação cria"
+    workouts }o--o{ exercises : "contém"
 ```
 
 ---
 
-## Padrões de Projeto
+## Gerenciamento de Estado
 
-### 1. **Repository Pattern**
-Services abstraem completamente o Firebase, permitindo trocar implementação:
+O Riverpod 3.0 é utilizado com três tipos de providers conforme o caso de uso:
 
-```dart
-abstract class ExerciseRepository {
-  Stream<List<Exercise>> watchExercises();
-  Future<void> createExercise(Exercise exercise);
-  Future<void> updateExercise(String id, Exercise exercise);
-  Future<void> deleteExercise(String id);
-}
+```mermaid
+flowchart LR
+    subgraph "StreamProvider — Firestore real-time"
+        SP1["studentsListProvider"]
+        SP2["exerciseListProvider"]
+        SP3["studentAnamnesesProvider"]
+    end
 
-class FirebaseExerciseRepository implements ExerciseRepository {
-  final FirebaseFirestore _firestore;
-  
-  @override
-  Stream<List<Exercise>> watchExercises() {
-    return _firestore.collection('exercises')
-      .snapshots()
-      .map((snapshot) => snapshot.docs.map((doc) => Exercise.fromFirestore(doc)).toList());
-  }
-}
-```
+    subgraph "FutureProvider — Leitura única"
+        FP1["anamnesisProvider(id)"]
+        FP2["anamnesisInsightsProvider(id)"]
+        FP3["workoutSuggestionsProvider(id)"]
+    end
 
-### 2. **RAG (Retrieval-Augmented Generation)**
-Combina recuperação de dados (exercícios, guidelines) com geração de IA:
+    subgraph "NotifierProvider — Ações e mutações"
+        NP1["AnamnesisAnswerNotifier\nsaveAnswerAndGetNext()"]
+        NP2["WorkoutSuggestionNotifier\napproveSuggestion()"]
+        NP3["AuthNotifier\nlogin() / register()"]
+    end
 
-```dart
-class RAGWorkoutService {
-  Future<List<WorkoutSuggestion>> generateSuggestions(String anamnesisId) async {
-    // 1. RETRIEVAL - Busca contexto
-    final insights = await _getInsights(anamnesisId);
-    final exercises = await _getAllExercises();
-    final guidelines = await _getScientificGuidelines();
-    
-    // 2. AUGMENTATION - Enriquece prompt
-    final context = _buildContext(insights, exercises, guidelines);
-    
-    // 3. GENERATION - IA gera sugestões
-    final suggestions = await _geminiService.generateWorkouts(context);
-    
-    return suggestions;
-  }
-}
-```
-
-### 3. **Secondary App Pattern (Firebase)**
-Isolamento de operações específicas sem afetar autenticação principal:
-
-```dart
-class FirebaseSecondaryApp {
-  static FirebaseApp? _secondaryApp;
-  
-  static Future<FirebaseApp> getSecondaryApp() async {
-    if (_secondaryApp != null) return _secondaryApp!;
-    
-    _secondaryApp = await Firebase.initializeApp(
-      name: 'SecondaryApp',
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    
-    return _secondaryApp!;
-  }
-}
-```
-
-### 4. **Observer Pattern (Riverpod)**
-Estado reativo que notifica automaticamente widgets:
-
-```dart
-// Provider observa Firestore
-final anamnesisProvider = StreamProvider.family<Anamnesis, String>((ref, id) {
-  return FirebaseFirestore.instance
-    .collection('anamnesis')
-    .doc(id)
-    .snapshots()
-    .map((doc) => Anamnesis.fromFirestore(doc));
-});
-
-// Widget consome e reage a mudanças
-class AnamnesisScreen extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final anamnesisAsync = ref.watch(anamnesisProvider(anamnesisId));
-    
-    return anamnesisAsync.when(
-      data: (anamnesis) => Text(anamnesis.status),
-      loading: () => CircularProgressIndicator(),
-      error: (e, s) => Text('Erro: $e'),
-    );
-  }
-}
+    subgraph "Provider — Singletons de serviço"
+        PP1["geminiServiceProvider"]
+        PP2["ragWorkoutServiceProvider"]
+        PP3["anamnesisServiceProvider"]
+    end
 ```
 
 ---
 
 ## Decisões Arquiteturais
 
-### Por que Feature-First ao invés de Layered?
+### Feature-First vs Layered
 
-**Layered (tradicional):**
-```
-lib/
-├── presentation/
-│   ├── screens/
-│   └── widgets/
-├── domain/
-│   ├── models/
-│   └── repositories/
-└── data/
-    ├── services/
-    └── sources/
-```
+A estrutura **feature-first** foi escolhida porque cada funcionalidade (anamnese, alunos, perfil) tem ciclo de vida independente. Adicionar ou remover uma feature equivale a adicionar ou remover uma pasta, sem impacto nas demais.
 
-**Feature-First (escolhido):**
-```
-lib/
-├── features/
-│   ├── anamnesis/
-│   │   ├── presentation/
-│   │   ├── domain/
-│   │   └── data/
-│   └── students/
-└── core/
-```
+### Riverpod vs BLoC
 
-**Vantagens:**
-- ✅ **Escalabilidade**: Adicionar nova feature não afeta outras
-- ✅ **Manutenibilidade**: Toda lógica de uma feature em um lugar
-- ✅ **Trabalho em equipe**: Desenvolvedores podem trabalhar em features isoladas
-- ✅ **Remoção fácil**: Deletar uma feature = deletar uma pasta
+| Critério | Riverpod | BLoC |
+|---|---|---|
+| Boilerplate | Mínimo | Alto |
+| Curva de aprendizado | Baixa | Média |
+| Compile-time safety | Sim | Sim |
+| Integração com Firebase | Nativa | Manual |
 
-### Por que Riverpod ao invés de BLoC/MobX?
+### Firestore vs SQL
 
-| Critério | Riverpod | BLoC | MobX |
-|----------|----------|------|------|
-| Curva de aprendizado | ⭐⭐⭐ | ⭐ | ⭐⭐ |
-| Boilerplate | Mínimo | Alto | Médio |
-| Performance | Excelente | Excelente | Boa |
-| Testabilidade | Excelente | Excelente | Boa |
-| Type-safety | Sim | Sim | Limitado |
-| Comunidade | Grande | Grande | Média |
+O Firestore foi escolhido por oferecer sincronização em tempo real nativa (necessária para o progresso da anamnese), suporte offline gratuito e ausência de infraestrutura de servidor para gerenciar — essencial para um projeto de TCC.
 
-**Riverpod venceu por:**
-- Menos boilerplate
-- Syntax moderna e limpa
-- Integração perfeita com Flutter
-- Compile-time safety
+### IA: RAG sem biblioteca prévia
 
-### Por que Firestore ao invés de SQL?
-
-| Critério | Firestore | PostgreSQL |
-|----------|-----------|------------|
-| Real-time | ✅ Nativo | ⚠️ Complexo |
-| Escalabilidade | ✅ Auto | ⚠️ Manual |
-| Custo inicial | ✅ Grátis | 💰 Servidor |
-| Queries complexas | ⚠️ Limitado | ✅ SQL completo |
-| Offline support | ✅ Nativo | ❌ |
-
-**Firestore escolhido porque:**
-- MVP precisa de velocidade
-- Real-time é requisito (progresso de anamnese)
-- Sem infraestrutura para gerenciar
-- Offline support gratuito
+As sugestões de treino são geradas livremente pela IA com base em ACSM/NSCA, **sem depender de uma biblioteca de exercícios pré-existente**. Os exercícios só são persistidos no Firestore quando o personal trainer aprova uma sugestão, via `findOrCreateByName`. Isso elimina o problema de "lista vazia" e permite que a IA prescreva o exercício mais adequado sem restrições artificiais.
 
 ---
 
-## Próximos Passos
-
-1. **Refatoração**: Mover `services` de `core/` para dentro de cada `feature/`
-2. **Testes**: Implementar testes unitários para cada service
-3. **CI/CD**: GitHub Actions para build e deploy automático
-4. **Monitoramento**: Firebase Performance + Crashlytics
-
----
-
-**Última atualização:** Junho 2026  
-**Versão:** 1.0.0
+**Última atualização:** Junho 2026 | **Versão:** 1.0.0

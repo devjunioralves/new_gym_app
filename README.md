@@ -92,7 +92,7 @@ A arquitetura feature-first com Riverpod separa claramente responsabilidades por
 
 ## C4 Model
 
-Os diagramas com base no modelo C4 se encontram [aqui.](docs/C4diagrams.md)
+Os diagramas com base no modelo C4 se encontram em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Requisitos e Casos de Uso
 

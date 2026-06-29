@@ -94,25 +94,6 @@ class _AnswerAnamnesisScreenState extends ConsumerState<AnswerAnamnesisScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (currentQuestion.isDynamic)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    '✨ Pergunta IA',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(height: 8),
                               Text(
                                 currentQuestion.text,
                                 style: const TextStyle(
@@ -265,6 +246,9 @@ class _AnswerAnamnesisScreenState extends ConsumerState<AnswerAnamnesisScreen> {
           }),
         );
 
+      case QuestionType.date:
+        return _buildDatePicker(question);
+
       default:
         return TextField(
           controller: _answerController,
@@ -274,6 +258,47 @@ class _AnswerAnamnesisScreenState extends ConsumerState<AnswerAnamnesisScreen> {
           ),
         );
     }
+  }
+
+  Widget _buildDatePicker(AnamnesisQuestion question) {
+    return InkWell(
+      onTap: () async {
+        final now = DateTime.now();
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: DateTime(now.year - 25, now.month, now.day),
+          firstDate: DateTime(1930),
+          lastDate: DateTime(now.year - 10),
+          locale: const Locale('pt', 'BR'),
+          helpText: 'Selecione a data de nascimento',
+          confirmText: 'Confirmar',
+          cancelText: 'Cancelar',
+        );
+        if (picked != null) {
+          final formatted =
+              '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+          _answerController.text = formatted;
+          setState(() {});
+        }
+      },
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          suffixIcon: Icon(Icons.calendar_today),
+        ),
+        child: Text(
+          _answerController.text.isEmpty
+              ? 'Toque para selecionar'
+              : _answerController.text,
+          style: TextStyle(
+            color: _answerController.text.isEmpty
+                ? Colors.grey
+                : Colors.black87,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildOptionButton(String option, AnamnesisQuestion question) {
@@ -321,7 +346,6 @@ class _AnswerAnamnesisScreenState extends ConsumerState<AnswerAnamnesisScreen> {
         answeredAt: DateTime.now(),
       );
 
-      // Salva e busca próxima pergunta
       final anamnesisData = await ref.read(
         anamnesisProvider(widget.anamnesisId).future,
       );
@@ -330,7 +354,7 @@ class _AnswerAnamnesisScreenState extends ConsumerState<AnswerAnamnesisScreen> {
         throw Exception('Anamnese não encontrada');
       }
 
-      final nextQuestion = await ref
+      final addedMoreQuestions = await ref
           .read(anamnesisAnswerNotifierProvider.notifier)
           .saveAnswerAndGetNext(
             anamnesisId: widget.anamnesisId,
@@ -339,18 +363,14 @@ class _AnswerAnamnesisScreenState extends ConsumerState<AnswerAnamnesisScreen> {
             allAnswers: anamnesisData.answers,
           );
 
-      // Se não há próxima pergunta, finaliza
-      if (nextQuestion == null &&
-          _currentQuestionIndex >= anamnesisData.questions.length - 1) {
+      final isLastQuestion =
+          _currentQuestionIndex >= anamnesisData.questions.length - 1;
+
+      if (!addedMoreQuestions && isLastQuestion) {
         await _completeAnamnesis(anamnesisData);
       } else {
-        // Limpa campo e avança
         _answerController.clear();
-        setState(() {
-          _currentQuestionIndex++;
-        });
-
-        // Invalida provider para recarregar
+        setState(() => _currentQuestionIndex++);
         ref.invalidate(anamnesisProvider(widget.anamnesisId));
       }
     } catch (e) {
@@ -372,20 +392,15 @@ class _AnswerAnamnesisScreenState extends ConsumerState<AnswerAnamnesisScreen> {
   Future<void> _completeAnamnesis(Anamnesis anamnesis) async {
     if (!mounted) return;
 
-    // Mostra loading
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      builder: (context) => const AlertDialog(
+        content: Row(
           children: [
             CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text(
-              '🤖 IA analisando suas respostas...',
-              style: TextStyle(color: Colors.white),
-            ),
+            SizedBox(width: 16),
+            Text('Aguarde, salvando respostas...'),
           ],
         ),
       ),

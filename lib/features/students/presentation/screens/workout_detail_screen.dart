@@ -53,10 +53,9 @@ class WorkoutDetailScreen extends ConsumerWidget {
                     ? const Center(child: Text('Nenhum exercício neste treino'))
                     : FutureBuilder<List<Exercise>>(
                         future: Future.wait(
-                          workout.exercises.map(
-                            (we) =>
-                                exerciseService.getExerciseById(we.exerciseId),
-                          ),
+                          workout.exercises
+                              .where((we) => we.exerciseId.isNotEmpty)
+                              .map((we) => exerciseService.getExerciseById(we.exerciseId)),
                         ),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==

@@ -17,6 +17,16 @@ final studentWorkoutsStreamProvider =
       return service.studentWorkoutsStream(studentId);
     });
 
+final personalStudentWorkoutsStreamProvider =
+    StreamProvider.family<List<WorkoutModel>, (String, String)>((
+      ref,
+      params,
+    ) {
+      final (studentId, personalId) = params;
+      final service = ref.watch(workoutServiceProvider);
+      return service.personalStudentWorkoutsStream(studentId, personalId);
+    });
+
 final workoutDetailProvider = FutureProvider.family<WorkoutModel?, String>((
   ref,
   workoutId,

@@ -48,6 +48,7 @@ class FirebaseAuthService {
     String password,
     UserRole role, {
     String? personalTrainerId,
+    String? cref,
   }) async {
     try {
       final credential = await _firebaseAuth.createUserWithEmailAndPassword(
@@ -62,6 +63,7 @@ class FirebaseAuthService {
         photoUrl: 'assets/images/profile.png',
         role: role,
         personalTrainerId: personalTrainerId,
+        cref: cref,
       );
 
       await _firestore.collection('users').doc(user.uid).set(user.toMap());
@@ -150,6 +152,16 @@ class FirebaseAuthService {
       return _cachedUser!;
     } catch (e) {
       throw Exception('Erro ao atualizar perfil: $e');
+    }
+  }
+
+  Future<void> changePassword(String newPassword) async {
+    final firebaseUser = _firebaseAuth.currentUser;
+    if (firebaseUser == null) throw Exception('Usuário não autenticado');
+    try {
+      await firebaseUser.updatePassword(newPassword);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
     }
   }
 

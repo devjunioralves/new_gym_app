@@ -7,6 +7,7 @@ class User {
   final String photoUrl;
   final UserRole role;
   final String? personalTrainerId;
+  final String? cref;
 
   const User({
     required this.uid,
@@ -15,6 +16,7 @@ class User {
     required this.photoUrl,
     required this.role,
     this.personalTrainerId,
+    this.cref,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,6 +26,7 @@ class User {
       'photoUrl': photoUrl,
       'role': role.toFirestore(),
       'personalTrainerId': personalTrainerId,
+      if (cref != null && cref!.isNotEmpty) 'cref': cref,
     };
   }
 
@@ -35,6 +38,7 @@ class User {
       photoUrl: map['photoUrl'] ?? 'assets/images/profile.png',
       role: UserRole.fromFirestore(map['role'] ?? 'student'),
       personalTrainerId: map['personalTrainerId'],
+      cref: map['cref'],
     );
   }
 
@@ -45,6 +49,7 @@ class User {
     String? photoUrl,
     UserRole? role,
     String? personalTrainerId,
+    String? cref,
   }) {
     return User(
       uid: uid ?? this.uid,
@@ -53,6 +58,7 @@ class User {
       photoUrl: photoUrl ?? this.photoUrl,
       role: role ?? this.role,
       personalTrainerId: personalTrainerId ?? this.personalTrainerId,
+      cref: cref ?? this.cref,
     );
   }
 

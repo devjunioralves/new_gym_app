@@ -103,18 +103,20 @@ class WorkoutSuggestion {
 
 /// Sugestão de exercício dentro do treino
 class ExerciseSuggestion {
-  final String exerciseId;
+  final String exerciseId;   // vazio até o personal aprovar
   final String exerciseName;
+  final String muscleGroup;  // grupo muscular para categorizar ao salvar
   final int series;
-  final String reps; // Pode ser "10-12" ou "30 segundos"
-  final String? rest; // Tempo de descanso
-  final String notes; // Observações técnicas
-  final String reason; // Por que esse exercício foi sugerido
-  final List<String> modifications; // Modificações possíveis
+  final String reps;
+  final String? rest;
+  final String notes;
+  final String reason;
+  final List<String> modifications;
 
   const ExerciseSuggestion({
-    required this.exerciseId,
+    this.exerciseId = '',
     required this.exerciseName,
+    required this.muscleGroup,
     required this.series,
     required this.reps,
     this.rest,
@@ -127,6 +129,7 @@ class ExerciseSuggestion {
     return {
       'exerciseId': exerciseId,
       'exerciseName': exerciseName,
+      'muscleGroup': muscleGroup,
       'series': series,
       'reps': reps,
       'rest': rest,
@@ -140,6 +143,7 @@ class ExerciseSuggestion {
     return ExerciseSuggestion(
       exerciseId: map['exerciseId'] ?? '',
       exerciseName: map['exerciseName'] ?? '',
+      muscleGroup: map['muscleGroup'] ?? '',
       series: map['series'] ?? 3,
       reps: map['reps'] ?? '10-12',
       rest: map['rest'],
@@ -147,6 +151,20 @@ class ExerciseSuggestion {
       reason: map['reason'] ?? '',
       modifications:
           (map['modifications'] as List<dynamic>?)?.cast<String>() ?? [],
+    );
+  }
+
+  ExerciseSuggestion copyWith({String? exerciseId}) {
+    return ExerciseSuggestion(
+      exerciseId: exerciseId ?? this.exerciseId,
+      exerciseName: exerciseName,
+      muscleGroup: muscleGroup,
+      series: series,
+      reps: reps,
+      rest: rest,
+      notes: notes,
+      reason: reason,
+      modifications: modifications,
     );
   }
 }

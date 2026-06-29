@@ -39,13 +39,24 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
     String name,
     String email,
     String password,
-    UserRole role,
-  ) async {
+    UserRole role, {
+    String? cref,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
-      final user = await authService.register(name, email, password, role);
+      final user = await authService.register(name, email, password, role, cref: cref);
       state = AsyncValue.data(user);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> changePassword(String newPassword) async {
+    try {
+      final authService = ref.read(firebaseAuthServiceProvider);
+      await authService.changePassword(newPassword);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
       rethrow;

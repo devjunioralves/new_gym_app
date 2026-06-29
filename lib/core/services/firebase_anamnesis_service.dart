@@ -126,15 +126,16 @@ class FirebaseAnamnesisService {
     });
   }
 
-  /// Adiciona uma pergunta dinâmica gerada pela IA
-  Future<void> addDynamicQuestion({
+  /// Adiciona um lote de perguntas diagnósticas geradas pela IA (chamada única)
+  Future<void> addDynamicQuestions({
     required String anamnesisId,
-    required AnamnesisQuestion question,
+    required List<AnamnesisQuestion> questions,
   }) async {
+    if (questions.isEmpty) return;
     final anamnesis = await getAnamnesis(anamnesisId);
     if (anamnesis == null) throw Exception('Anamnese não encontrada');
 
-    final updatedQuestions = [...anamnesis.questions, question];
+    final updatedQuestions = [...anamnesis.questions, ...questions];
 
     await _firestore.collection(_anamnesisCollection).doc(anamnesisId).update({
       'questions': updatedQuestions.map((q) => q.toMap()).toList(),

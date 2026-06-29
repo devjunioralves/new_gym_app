@@ -1,161 +1,38 @@
 import 'package:new_gym_app/core/models/anamnesis_model.dart';
 
-/// Template de anamnese base
-/// Baseado em anamnese profissional fornecida por personal trainer
 class AnamnesisTemplate {
-  /// Retorna lista de perguntas base para anamnese inicial
   static List<AnamnesisQuestion> getBaseQuestions() {
     return [
-      // ========== DADOS PESSOAIS ==========
+      // ── Identificação ───────────────────────────────────────────────────────
       AnamnesisQuestion(
         id: 'q1',
-        text: 'Qual é o seu nome completo?',
-        type: QuestionType.text,
+        text: 'Qual é a sua data de nascimento?',
+        type: QuestionType.date,
         isRequired: true,
         isDynamic: false,
         order: 1,
       ),
       AnamnesisQuestion(
         id: 'q2',
-        text: 'Qual é a sua data de nascimento?',
-        type: QuestionType.date,
+        text: 'Qual é o seu sexo biológico?',
+        type: QuestionType.multipleChoice,
+        options: ['Masculino', 'Feminino', 'Prefiro não informar'],
         isRequired: true,
         isDynamic: false,
         order: 2,
       ),
       AnamnesisQuestion(
         id: 'q3',
-        text: 'Qual é a sua altura? (em cm)',
+        text: 'Qual é o seu peso atual (kg) e altura (cm)?',
         type: QuestionType.text,
         isRequired: true,
         isDynamic: false,
         order: 3,
       ),
+
+      // ── Objetivo e histórico de treino ───────────────────────────────────────
       AnamnesisQuestion(
         id: 'q4',
-        text: 'Qual é o seu peso atual? (em kg)',
-        type: QuestionType.text,
-        isRequired: true,
-        isDynamic: false,
-        order: 4,
-      ),
-      AnamnesisQuestion(
-        id: 'q5',
-        text: 'Qual é o seu gênero?',
-        type: QuestionType.multipleChoice,
-        options: ['Masculino', 'Feminino', 'Outro', 'Prefiro não informar'],
-        isRequired: true,
-        isDynamic: false,
-        order: 5,
-      ),
-      AnamnesisQuestion(
-        id: 'q6',
-        text: 'Se do sexo feminino, está grávida?',
-        type: QuestionType.yesNo,
-        isRequired: false,
-        isDynamic: false,
-        order: 6,
-      ),
-
-      // ========== ROTINA ==========
-      AnamnesisQuestion(
-        id: 'q7',
-        text: 'Qual é o seu trabalho? Em qual horário trabalha?',
-        type: QuestionType.text,
-        isRequired: true,
-        isDynamic: false,
-        order: 7,
-      ),
-      AnamnesisQuestion(
-        id: 'q8',
-        text: 'Você estuda? Se sim, em qual horário?',
-        type: QuestionType.text,
-        isRequired: false,
-        isDynamic: false,
-        order: 8,
-      ),
-      AnamnesisQuestion(
-        id: 'q9',
-        text: 'Que horas você normalmente dorme e acorda?',
-        type: QuestionType.text,
-        isRequired: true,
-        isDynamic: false,
-        order: 9,
-      ),
-      AnamnesisQuestion(
-        id: 'q10',
-        text: 'Você se sente cansado(a) frequentemente?',
-        type: QuestionType.yesNo,
-        isRequired: true,
-        isDynamic: false,
-        order: 10,
-      ),
-
-      // ========== SAÚDE E CONDICIONAMENTO ==========
-      AnamnesisQuestion(
-        id: 'q11',
-        text: 'Você sabe sua pressão arterial? Se sim, qual é?',
-        type: QuestionType.text,
-        isRequired: false,
-        isDynamic: false,
-        order: 11,
-      ),
-      AnamnesisQuestion(
-        id: 'q12',
-        text:
-            'Você está inativo fisicamente? (faz menos que 90 min por semana de atividade vigorosa ou 120 min por semana de atividades moderadas)',
-        type: QuestionType.yesNo,
-        isRequired: true,
-        isDynamic: false,
-        order: 12,
-      ),
-      AnamnesisQuestion(
-        id: 'q13',
-        text: 'Você fuma ou parou de fumar há menos de 6 meses?',
-        type: QuestionType.yesNo,
-        isRequired: true,
-        isDynamic: false,
-        order: 13,
-      ),
-      AnamnesisQuestion(
-        id: 'q14',
-        text: 'Faz uso de bebida alcoólica? Com que frequência?',
-        type: QuestionType.text,
-        isRequired: true,
-        isDynamic: false,
-        order: 14,
-      ),
-
-      // ========== HISTÓRICO DE ATIVIDADE FÍSICA ==========
-      AnamnesisQuestion(
-        id: 'q15',
-        text:
-            'Pratica alguma atividade física diária ou de fim-de-semana, além da musculação? (corrida, artes marciais, etc.)',
-        type: QuestionType.text,
-        isRequired: false,
-        isDynamic: false,
-        order: 15,
-      ),
-      AnamnesisQuestion(
-        id: 'q16',
-        text: 'Treina musculação há quanto tempo?',
-        type: QuestionType.multipleChoice,
-        options: [
-          'Nunca treinei',
-          'Menos de 3 meses',
-          '3 a 6 meses',
-          '6 meses a 1 ano',
-          '1 a 2 anos',
-          'Mais de 2 anos',
-        ],
-        isRequired: true,
-        isDynamic: false,
-        order: 16,
-      ),
-
-      // ========== OBJETIVOS ==========
-      AnamnesisQuestion(
-        id: 'q17',
         text: 'Qual é o seu objetivo principal com o treino?',
         type: QuestionType.multipleChoice,
         options: [
@@ -165,247 +42,372 @@ class AnamnesisTemplate {
           'Saúde e bem-estar',
           'Reabilitação',
           'Performance esportiva',
-          'Outro',
         ],
+        isRequired: true,
+        isDynamic: false,
+        order: 4,
+      ),
+      AnamnesisQuestion(
+        id: 'q5',
+        text: 'Como você descreveria seu nível atual de atividade física?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Sedentário (não pratico nenhum exercício)',
+          'Pouco ativo (exercício leve 1-2x por semana)',
+          'Ativo (exercício moderado 3-4x por semana)',
+          'Muito ativo (exercício intenso 5+ vezes por semana)',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 5,
+      ),
+      AnamnesisQuestion(
+        id: 'q6',
+        text: 'Há quanto tempo pratica musculação ou exercícios resistidos?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Nunca pratiquei',
+          'Menos de 3 meses',
+          '3 a 12 meses',
+          '1 a 3 anos',
+          'Mais de 3 anos',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 6,
+      ),
+      AnamnesisQuestion(
+        id: 'q7',
+        text: 'Quantas vezes por semana você consegue treinar?',
+        type: QuestionType.multipleChoice,
+        options: [
+          '1 a 2 vezes',
+          '3 vezes',
+          '4 vezes',
+          '5 vezes',
+          '6 ou mais vezes',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 7,
+      ),
+
+      // ── Estilo de vida ───────────────────────────────────────────────────────
+      AnamnesisQuestion(
+        id: 'q8',
+        text: 'Qual é a sua ocupação principal? (Ex: trabalho sentado, em pé, trabalho físico, estudante)',
+        type: QuestionType.text,
+        isRequired: true,
+        isDynamic: false,
+        order: 8,
+      ),
+      AnamnesisQuestion(
+        id: 'q9',
+        text: 'Como você avalia sua qualidade de sono?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Ruim (menos de 5 horas ou sono muito agitado)',
+          'Regular (5-6 horas)',
+          'Boa (7-8 horas)',
+          'Excelente (mais de 8 horas e acordo descansado)',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 9,
+      ),
+      AnamnesisQuestion(
+        id: 'q10',
+        text: 'Como você avalia seu nível de estresse no dia a dia?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Baixo — raramente me sinto estressado',
+          'Moderado — estresso eventualmente',
+          'Alto — frequentemente sob pressão',
+          'Muito alto — estresse quase constante',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 10,
+      ),
+      AnamnesisQuestion(
+        id: 'q11',
+        text: 'Como você descreveria seus hábitos alimentares?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Muito ruim — como mal e de forma irregular',
+          'Regular — como de tudo mas sem controle',
+          'Bom — tento me alimentar bem na maioria das vezes',
+          'Ótimo — alimentação balanceada e controlada',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 11,
+      ),
+      AnamnesisQuestion(
+        id: 'q12',
+        text: 'Faz uso de suplementos alimentares? Se sim, quais?',
+        type: QuestionType.text,
+        isRequired: true,
+        isDynamic: false,
+        order: 12,
+      ),
+
+      // ── Saúde clínica ────────────────────────────────────────────────────────
+      AnamnesisQuestion(
+        id: 'q13',
+        text: 'Possui alguma condição de saúde diagnosticada? (Ex: hipertensão, diabetes, problemas cardíacos, asma, tireoide, etc.) Se sim, descreva.',
+        type: QuestionType.text,
+        isRequired: true,
+        isDynamic: false,
+        order: 13,
+      ),
+      AnamnesisQuestion(
+        id: 'q14',
+        text: 'Sente dores ou possui lesões que possam afetar a prática de exercícios? Se sim, onde e com que frequência?',
+        type: QuestionType.text,
+        isRequired: true,
+        isDynamic: false,
+        order: 14,
+      ),
+      AnamnesisQuestion(
+        id: 'q15',
+        text: 'Toma algum medicamento regularmente? Se sim, qual(is) e para qual finalidade?',
+        type: QuestionType.text,
+        isRequired: true,
+        isDynamic: false,
+        order: 15,
+      ),
+      AnamnesisQuestion(
+        id: 'q16',
+        text: 'Tem histórico familiar de doenças cardiovasculares, diabetes ou obesidade?',
+        type: QuestionType.yesNo,
+        isRequired: true,
+        isDynamic: false,
+        order: 16,
+      ),
+      AnamnesisQuestion(
+        id: 'q17',
+        text: 'Algum médico já recomendou que você só pratique atividade física sob supervisão médica?',
+        type: QuestionType.yesNo,
         isRequired: true,
         isDynamic: false,
         order: 17,
       ),
+
+      // ── Saúde complementar (todos os sexos) ─────────────────────────────────
       AnamnesisQuestion(
-        id: 'q18',
-        text:
-            'Descreva sua meta para daqui 1 mês e sua disponibilidade semanal para atividade física extra',
-        type: QuestionType.text,
+        id: 'qh1',
+        text: 'Fuma ou usou tabaco (cigarro, narguilé, vape) nos últimos 12 meses?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Não, nunca fumei',
+          'Não, parei há mais de 1 ano',
+          'Parei recentemente (menos de 1 ano)',
+          'Sim, fumo ocasionalmente',
+          'Sim, fumo diariamente',
+        ],
         isRequired: true,
         isDynamic: false,
         order: 18,
       ),
-
-      // ========== ALIMENTAÇÃO ==========
       AnamnesisQuestion(
-        id: 'q19',
-        text:
-            'Você geralmente segue alguma rotina alimentar em suas refeições?',
-        type: QuestionType.yesNo,
+        id: 'qh2',
+        text: 'Com que frequência consome bebidas alcoólicas?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Não consumo',
+          'Raramente (ocasiões especiais)',
+          'Moderadamente (1-2x por semana)',
+          'Frequentemente (3-5x por semana)',
+          'Diariamente',
+        ],
         isRequired: true,
         isDynamic: false,
         order: 19,
       ),
       AnamnesisQuestion(
-        id: 'q20',
-        text: 'Quais refeições você normalmente realiza ao dia?',
-        type: QuestionType.multiSelect,
-        options: [
-          'Café da manhã',
-          'Lanche da manhã',
-          'Almoço',
-          'Lanche da tarde',
-          'Jantar',
-          'Ceia',
-        ],
+        id: 'qh3',
+        text: 'Já realizou alguma cirurgia? Se sim, qual tipo e aproximadamente quando? (Ex: ortopédica, abdominal, cardíaca)',
+        type: QuestionType.text,
         isRequired: true,
         isDynamic: false,
         order: 20,
       ),
-
-      // ========== MOTIVAÇÃO E COMPROMETIMENTO ==========
       AnamnesisQuestion(
-        id: 'q21',
-        text:
-            'De 0 a 10, quanto você gosta de frequentar a academia e/ou treinar?',
-        type: QuestionType.scale,
+        id: 'qh4',
+        text: 'Durante ou após atividade física, você já sentiu dor no peito, tontura intensa, falta de ar desproporcional ao esforço ou desmaio?',
+        type: QuestionType.yesNo,
         isRequired: true,
         isDynamic: false,
         order: 21,
       ),
       AnamnesisQuestion(
-        id: 'q22',
-        text:
-            'De 0 a 10, quanto você acha que precisa mudar na sua rotina para alcançar seu objetivo?',
-        type: QuestionType.scale,
+        id: 'qh5',
+        text: 'Como você avalia sua saúde mental no geral?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Boa — sem queixas significativas',
+          'Tenho ansiedade (com ou sem tratamento)',
+          'Tenho depressão (com ou sem tratamento)',
+          'Tenho outro transtorno diagnosticado',
+          'Estou passando por um período difícil, mas sem diagnóstico',
+          'Prefiro não informar',
+        ],
         isRequired: true,
         isDynamic: false,
         order: 22,
       ),
+    ];
+  }
+
+  /// Perguntas específicas para alunas do sexo feminino.
+  /// Injetadas automaticamente quando q2 = 'Feminino'.
+  static List<AnamnesisQuestion> getFemaleQuestions() {
+    return [
       AnamnesisQuestion(
-        id: 'q23',
-        text:
-            'De 0 a 10, quanto está disposto a se dedicar para realizar sua frequência semanal predeterminada?',
-        type: QuestionType.scale,
+        id: 'qf1',
+        text: 'Está grávida ou existe possibilidade de gravidez?',
+        type: QuestionType.yesNo,
         isRequired: true,
         isDynamic: false,
         order: 23,
       ),
       AnamnesisQuestion(
-        id: 'q24',
-        text: 'Você tem dúvidas quanto à segurança de se exercitar?',
+        id: 'qf2',
+        text: 'Está amamentando atualmente?',
         type: QuestionType.yesNo,
         isRequired: true,
         isDynamic: false,
         order: 24,
       ),
-
-      // ========== RISCOS CARDÍACOS E CONTRAINDICAÇÕES ==========
       AnamnesisQuestion(
-        id: 'q25',
-        text:
-            'Alguma vez um médico lhe disse que você possui um problema do coração e recomendou atividade física apenas sob supervisão médica?',
-        type: QuestionType.yesNo,
+        id: 'qf3',
+        text: 'Como é o seu ciclo menstrual?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Regular (ciclos de 24 a 35 dias)',
+          'Irregular',
+          'Pós-menopausa',
+          'Uso de anticoncepcional — sem menstruação regular',
+        ],
         isRequired: true,
         isDynamic: false,
         order: 25,
       ),
       AnamnesisQuestion(
-        id: 'q26',
-        text:
-            'Você sente dor no peito causada pela prática de atividade física?',
-        type: QuestionType.yesNo,
+        id: 'qf4',
+        text: 'Faz uso de anticoncepcionais hormonais ou terapia de reposição hormonal (TRH)?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Não',
+          'Sim — anticoncepcional oral (pílula)',
+          'Sim — DIU hormonal (Mirena, etc.)',
+          'Sim — injeção hormonal',
+          'Sim — implante subcutâneo',
+          'Sim — terapia de reposição hormonal (TRH)',
+        ],
         isRequired: true,
         isDynamic: false,
         order: 26,
       ),
       AnamnesisQuestion(
-        id: 'q27',
-        text: 'Você sentiu dor no peito no último mês?',
-        type: QuestionType.yesNo,
+        id: 'qf5',
+        text: 'Tem diagnóstico de SOP (Síndrome dos Ovários Policísticos), endometriose ou outro distúrbio hormonal?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Não',
+          'Sim — SOP',
+          'Sim — endometriose',
+          'Sim — outro distúrbio hormonal',
+          'Suspeito, mas sem diagnóstico confirmado',
+        ],
         isRequired: true,
         isDynamic: false,
         order: 27,
       ),
       AnamnesisQuestion(
-        id: 'q28',
-        text:
-            'Você tende a perder a consciência ou cair, como resultado de tontura ou desmaio?',
-        type: QuestionType.yesNo,
+        id: 'qf6',
+        text: 'Tem histórico de osteoporose, osteopenia ou já realizou densitometria óssea?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Não e nunca realizei densitometria',
+          'Realizei — resultado normal',
+          'Sim — tenho osteopenia',
+          'Sim — tenho osteoporose',
+        ],
         isRequired: true,
         isDynamic: false,
         order: 28,
       ),
-
-      // ========== PROBLEMAS MUSCULOESQUELÉTICOS ==========
       AnamnesisQuestion(
-        id: 'q29',
-        text:
-            'Foi referido pelo seu médico algum problema ósseo, articular ou muscular que possa ser agravado pela prática de atividades físicas?',
-        type: QuestionType.text,
+        id: 'qf7',
+        text: 'Já teve hipertensão gestacional, pré-eclâmpsia ou alguma complicação cardiovascular durante a gravidez?',
+        type: QuestionType.yesNo,
         isRequired: true,
         isDynamic: false,
         order: 29,
       ),
-      AnamnesisQuestion(
-        id: 'q30',
-        text: 'Você já se lesionou praticando exercícios? Descreva.',
-        type: QuestionType.text,
-        isRequired: false,
-        isDynamic: false,
-        order: 30,
-      ),
-      AnamnesisQuestion(
-        id: 'q31',
-        text:
-            'Você tem algum problema ósseo ou muscular que poderia ser agravado com a prática de atividade física?',
-        type: QuestionType.text,
-        isRequired: true,
-        isDynamic: false,
-        order: 31,
-      ),
+    ];
+  }
 
-      // ========== MEDICAMENTOS E SUPLEMENTOS ==========
+  /// Perguntas específicas para alunos do sexo masculino.
+  /// Injetadas automaticamente quando q2 = 'Masculino'.
+  static List<AnamnesisQuestion> getMaleQuestions() {
+    return [
       AnamnesisQuestion(
-        id: 'q32',
-        text:
-            'Algum médico já lhe recomendou o uso de medicamentos para pressão arterial, circulação ou coração?',
-        type: QuestionType.yesNo,
-        isRequired: true,
-        isDynamic: false,
-        order: 32,
-      ),
-      AnamnesisQuestion(
-        id: 'q33',
-        text: 'Toma algum medicamento? Qual(is)?',
-        type: QuestionType.text,
-        isRequired: false,
-        isDynamic: false,
-        order: 33,
-      ),
-      AnamnesisQuestion(
-        id: 'q34',
-        text: 'Toma algum suplemento? Qual(is)?',
-        type: QuestionType.text,
-        isRequired: false,
-        isDynamic: false,
-        order: 34,
-      ),
-
-      // ========== OUTRAS CONTRAINDICAÇÕES ==========
-      AnamnesisQuestion(
-        id: 'q35',
-        text:
-            'Você tem consciência, através da sua própria experiência ou aconselhamento médico, de alguma outra razão física que impeça sua prática de atividade física sem supervisão médica?',
-        type: QuestionType.text,
-        isRequired: true,
-        isDynamic: false,
-        order: 35,
-      ),
-
-      // ========== AUTORIZAÇÃO DE IMAGENS ==========
-      AnamnesisQuestion(
-        id: 'q36',
-        text:
-            'Você concorda com o uso de imagem para melhora da sua performance ou divulgação?',
-        type: QuestionType.yesNo,
-        isRequired: true,
-        isDynamic: false,
-        order: 36,
-      ),
-      AnamnesisQuestion(
-        id: 'q37',
-        text:
-            'Qual o seu pensamento sobre utilização de imagens para realização de avaliação? (fotos não divulgadas, apenas para adequar o treinamento)',
+        id: 'qm1',
+        text: 'Tem diagnóstico de hérnia (inguinal, abdominal ou hiatal)?',
         type: QuestionType.multipleChoice,
         options: [
-          'Concordo totalmente',
-          'Concordo parcialmente',
-          'Indiferente',
-          'Não concordo',
+          'Não',
+          'Sim — hérnia inguinal (virilha)',
+          'Sim — hérnia abdominal (umbilical ou epigástrica)',
+          'Sim — hérnia hiatal (estômago/esôfago)',
+          'Sim — mais de um tipo',
         ],
         isRequired: true,
         isDynamic: false,
-        order: 37,
+        order: 23,
+      ),
+      AnamnesisQuestion(
+        id: 'qm2',
+        text: 'Faz ou já fez uso de testosterona, anabolizantes esteroides ou hormônio do crescimento (GH)?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Não, nunca usei',
+          'Já usei no passado, mas parei',
+          'Sim, faço uso atualmente com acompanhamento médico (TRT)',
+          'Sim, faço uso atualmente sem acompanhamento médico',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 24,
+      ),
+      AnamnesisQuestion(
+        id: 'qm3',
+        text: 'Percebe queda de energia, disposição, concentração ou libido de forma persistente nos últimos meses?',
+        type: QuestionType.multipleChoice,
+        options: [
+          'Não, estou bem nesse aspecto',
+          'Sim, levemente',
+          'Sim, de forma moderada e está me incomodando',
+          'Sim, de forma intensa',
+        ],
+        isRequired: true,
+        isDynamic: false,
+        order: 25,
       ),
     ];
   }
 
-  /// Agrupa perguntas por categoria para exibição organizada
-  static Map<String, List<AnamnesisQuestion>> getGroupedQuestions() {
-    final allQuestions = getBaseQuestions();
-
-    return {
-      'Dados Pessoais': allQuestions.sublist(0, 6),
-      'Rotina Diária': allQuestions.sublist(6, 10),
-      'Saúde Geral': allQuestions.sublist(10, 14),
-      'Atividade Física': allQuestions.sublist(14, 16),
-      'Objetivos': allQuestions.sublist(16, 18),
-      'Alimentação': allQuestions.sublist(18, 20),
-      'Motivação': allQuestions.sublist(20, 24),
-      'Saúde Cardíaca': allQuestions.sublist(24, 28),
-      'Saúde Musculoesquelética': allQuestions.sublist(28, 31),
-      'Medicamentos': allQuestions.sublist(31, 34),
-      'Outras Informações': allQuestions.sublist(34, 35),
-      'Autorização': allQuestions.sublist(35, 37),
-    };
-  }
-
-  /// Retorna perguntas críticas que sempre devem ser respondidas
   static List<String> getCriticalQuestionIds() {
     return [
-      'q25', // Problema cardíaco
-      'q26', // Dor no peito ao exercitar
-      'q27', // Dor no peito recente
-      'q28', // Desmaios
-      'q29', // Problemas ósseos/articulares
-      'q32', // Medicamentos cardíacos
-      'q35', // Outras contraindicações
+      'q13', 'q14', 'q15', 'q16', 'q17', // saúde clínica base
+      'qh4', // sintomas durante exercício (triagem de segurança)
+      'qf1', // gravidez
+      'qf5', // SOP/endometriose
+      'qm1', // hérnia (restringe exercícios)
+      'qm2', // uso de hormônios exógenos
     ];
   }
 }

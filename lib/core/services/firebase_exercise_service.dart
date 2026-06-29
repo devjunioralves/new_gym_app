@@ -76,6 +76,36 @@ class FirebaseExerciseService {
     });
   }
 
+  /// Busca exercício pelo nome (case-insensitive). Se não existir, cria e retorna o novo ID.
+  Future<String> findOrCreateByName({
+    required String name,
+    required String workoutType,
+    required int series,
+    required int reps,
+    required String instructions,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_collectionName)
+          .where('name', isEqualTo: name)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) return snapshot.docs.first.id;
+
+      return createExercise(
+        name: name,
+        workoutType: workoutType,
+        series: series,
+        reps: reps,
+        imageUrl: '',
+        instructions: instructions,
+      );
+    } catch (e) {
+      throw Exception('Erro ao buscar/criar exercício: $e');
+    }
+  }
+
   Future<String> addExercise(Exercise exercise) async {
     try {
       final docRef = await _firestore

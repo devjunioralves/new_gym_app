@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:new_gym_app/core/shared_widgets/app_footer.dart';
 
 import '../providers/students_provider.dart';
 
@@ -12,6 +13,7 @@ class StudentsListScreen extends ConsumerWidget {
     final studentsAsync = ref.watch(filteredStudentsProvider);
 
     return Scaffold(
+      bottomNavigationBar: const AppFooter(),
       appBar: AppBar(
         title: const Text('Meus Alunos'),
         bottom: PreferredSize(

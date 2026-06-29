@@ -2,41 +2,28 @@ import 'dart:convert';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:new_gym_app/core/models/anamnesis_insights_model.dart';
-import 'package:new_gym_app/core/models/exercise_model.dart';
 import 'package:new_gym_app/core/models/workout_suggestion_model.dart';
 
-/// Service para geração de sugestões de treino usando RAG (Retrieval-Augmented Generation)
-/// com base científica (ACSM, NSCA, literatura)
 class RAGWorkoutService {
   final GenerativeModel _model;
 
   RAGWorkoutService({required String apiKey})
     : _model = GenerativeModel(
-        model: 'gemini-1.5-pro',
+        model: 'gemini-3.5-flash',
         apiKey: apiKey,
         generationConfig: GenerationConfig(
           temperature: 0.8,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
         ),
       );
 
-  /// Gera sugestões de treino baseadas nos insights da anamnese
-  /// e na biblioteca de exercícios disponíveis
   Future<List<WorkoutSuggestion>> generateWorkoutSuggestions({
     required String anamnesisId,
     required AnamnesisInsights insights,
-    required List<Exercise> availableExercises,
   }) async {
-    // 1. Filtra exercícios seguros baseado nas restrições
-    final safeExercises = _filterSafeExercises(
-      exercises: availableExercises,
-      conditions: insights.conditions,
-    );
-
-    // 2. Cria contexto rico para a IA
-    final prompt = _buildRAGPrompt(insights, safeExercises);
+    final prompt = _buildRAGPrompt(insights);
 
     try {
       final response = await _model.generateContent([Content.text(prompt)]);
@@ -58,121 +45,72 @@ class RAGWorkoutService {
     }
   }
 
-  /// Filtra exercícios seguros baseado nas condições de saúde
-  List<Exercise> _filterSafeExercises({
-    required List<Exercise> exercises,
-    required List<HealthCondition> conditions,
-  }) {
-    // Coleta todas as restrições
-    final allRestrictions = conditions
-        .expand((c) => c.restrictions)
-        .map((r) => r.toLowerCase())
-        .toSet();
-
-    // Filtra exercícios que não estão nas restrições
-    return exercises.where((exercise) {
-      final exerciseName = exercise.name.toLowerCase();
-      final exerciseType = exercise.workoutType.toLowerCase();
-
-      // Verifica se o exercício ou tipo está restrito
-      return !allRestrictions.any(
-        (restriction) =>
-            exerciseName.contains(restriction) ||
-            exerciseType.contains(restriction),
-      );
-    }).toList();
-  }
-
-  /// Constrói prompt RAG com base científica
-  String _buildRAGPrompt(
-    AnamnesisInsights insights,
-    List<Exercise> safeExercises,
-  ) {
-    final exerciseList = safeExercises
-        .map((e) => '- ${e.name} (${e.workoutType})')
-        .join('\n');
-
+  String _buildRAGPrompt(AnamnesisInsights insights) {
     return '''
-Você é um especialista em prescrição de exercícios com PhD em Fisiologia do Exercício.
+Você é um especialista em prescrição de exercícios com PhD em Fisiologia do Exercício,
+certificado pelo ACSM e NSCA.
 
 TAREFA:
-Crie 2-3 opções de treino personalizadas baseadas RIGOROSAMENTE em evidências científicas.
+Crie 1 plano de treino personalizado baseado em evidências científicas (ACSM/NSCA).
+Você tem liberdade total para prescrever qualquer exercício adequado ao perfil do aluno.
 
 PERFIL DO ALUNO:
 ${insights.summary}
 
-OBJETIVOS:
-${insights.goals.join(', ')}
+OBJETIVOS: ${insights.goals.join(', ')}
+NÍVEL: ${insights.fitnessLevel.displayName}
+RISCO DE LESÃO: ${(insights.injuryRisk * 100).toStringAsFixed(0)}%
 
 LIMITAÇÕES E CONDIÇÕES:
 ${_formatConditions(insights.conditions)}
-${insights.limitations.isNotEmpty ? '\nLimitações Físicas:\n${insights.limitations.map((l) => '- $l').join('\n')}' : ''}
+${insights.limitations.isNotEmpty ? 'Limitações físicas: ${insights.limitations.join(', ')}' : ''}
 
-NÍVEL DE CONDICIONAMENTO: ${insights.fitnessLevel.displayName}
-RISCO DE LESÃO: ${(insights.injuryRisk * 100).toStringAsFixed(0)}%
+DIRETRIZES CIENTÍFICAS:
+- Iniciantes: 2-3x/sem, 8-15 reps, 1-3 séries, carga leve-moderada (ACSM 2021)
+- Intermediários: 3-4x/sem, 6-12 reps, 3-4 séries, progressão controlada
+- Avançados: 4-6x/sem, 4-12 reps, 4-6 séries, periodização
+- Progressão máxima de carga: 10%/semana (NSCA Position Statement)
+- Hipertensão: evitar manobra de Valsalva, preferir cargas moderadas
+- Lesões articulares: ROM controlado, evitar impacto excessivo
+- Gravidez: posição supina após 1º trimestre, intensidade moderada, sem impacto
+- SOP/distúrbios hormonais: priorizar treino resistido e HIIT moderado
+- Osteoporose/osteopenia: exercícios de impacto leve com suporte ósseo (caminhada, mini-saltos), resistência moderada
+- Hérnia: evitar compressão abdominal elevada, sem Valsalva
 
-EXERCÍCIOS DISPONÍVEIS E SEGUROS:
-$exerciseList
-
-DIRETRIZES CIENTÍFICAS A SEGUIR:
-
-1. ACSM Guidelines (2021):
-   - Iniciantes: 2-3x/semana, 8-12 repetições, 1-3 séries
-   - Intermediários: 3-4x/semana, 6-12 repetições, 3-4 séries
-   - Avançados: 4-6x/semana, periodização, 4-6 séries
-
-2. NSCA Essentials:
-   - Progressão: 2-10% de carga por semana (máximo)
-   - Descanso: 48-72h entre grupos musculares
-   - Volume: ajustar baseado em resposta individual
-
-3. Condições Especiais:
-   - Hipertensão: evitar Valsalva, preferir circuitos
-   - Dores articulares: ROM controlado, baixo impacto
-   - Sedentários: começar 40-60% 1RM, progressão lenta
-
-FORMATO DE RESPOSTA (JSON):
+RESPONDA APENAS com JSON válido, sem texto extra:
 {
   "suggestions": [
     {
       "name": "Nome descritivo do treino",
       "exercises": [
         {
-          "exerciseName": "nome exato do exercício da lista",
+          "exerciseName": "nome do exercício em português",
+          "muscleGroup": "grupo muscular principal (ex: Peito, Costas, Pernas, Ombro, Bíceps, Tríceps, Core, Glúteo, Cardio)",
           "series": 3,
-          "reps": "10-12" ou "30 segundos",
-          "rest": "60-90 segundos",
-          "notes": "técnica e cuidados específicos",
-          "reason": "justificativa científica (cite fonte: ACSM, NSCA, etc)",
-          "modifications": ["modificação 1 se necessário", "modificação 2"]
+          "reps": "10-12",
+          "rest": "60s",
+          "notes": "instrução técnica e cuidados",
+          "reason": "justificativa baseada em ACSM/NSCA ou evidência científica",
+          "modifications": ["variação mais fácil ou adaptação se necessário"]
         }
       ],
-      "rationale": "Justificativa geral do treino baseada em evidências (cite estudos ou guidelines)",
-      "precautions": ["cuidado específico 1", "cuidado 2"],
+      "rationale": "Justificativa geral do plano baseada em evidências",
+      "precautions": ["cuidado específico 1", "cuidado específico 2"],
       "references": [
         {
-          "title": "Título do guideline/estudo",
-          "source": "ACSM, NSCA, journal",
-          "url": "link se disponível",
-          "summary": "relevância para este caso"
+          "title": "Título do guideline ou estudo",
+          "source": "ACSM, NSCA, ou journal científico",
+          "url": "",
+          "summary": "Como essa referência justifica o plano"
         }
       ],
       "confidence": 0.85
     }
   ]
 }
-
-IMPORTANTE:
-- Use APENAS exercícios da lista fornecida
-- Base TODAS as decisões em evidências (ACSM, NSCA, literatura)
-- Seja conservador em casos de alto risco
-- Inclua SEMPRE as referências científicas
-- Sugira modificações quando apropriado
-- Confidence deve refletir a certeza científica (0.0-1.0)
 ''';
   }
 
-  /// Formata condições de saúde para o prompt
   String _formatConditions(List<HealthCondition> conditions) {
     if (conditions.isEmpty) return 'Nenhuma condição reportada';
 
@@ -186,7 +124,6 @@ IMPORTANTE:
         .join('\n');
   }
 
-  /// Converte dados JSON em WorkoutSuggestion
   WorkoutSuggestion _parseSuggestion({
     required Map<String, dynamic> data,
     required String anamnesisId,
@@ -194,13 +131,14 @@ IMPORTANTE:
     return WorkoutSuggestion(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       anamnesisId: anamnesisId,
-      name: data['name'] as String,
-      exercises: (data['exercises'] as List<dynamic>)
-          .map((e) => ExerciseSuggestion.fromMap(e as Map<String, dynamic>))
-          .toList(),
-      rationale: data['rationale'] as String,
-      precautions: (data['precautions'] as List<dynamic>).cast<String>(),
-      references: (data['references'] as List<dynamic>)
+      name: data['name'] as String? ?? 'Treino personalizado',
+      exercises: (data['exercises'] as List<dynamic>? ?? []).map((e) {
+        final map = e as Map<String, dynamic>;
+        return ExerciseSuggestion.fromMap(map);
+      }).toList(),
+      rationale: data['rationale'] as String? ?? '',
+      precautions: (data['precautions'] as List<dynamic>?)?.cast<String>() ?? [],
+      references: (data['references'] as List<dynamic>? ?? [])
           .map((r) => ScientificReference.fromMap(r as Map<String, dynamic>))
           .toList(),
       confidence: (data['confidence'] ?? 0.7).toDouble(),
@@ -208,19 +146,14 @@ IMPORTANTE:
     );
   }
 
-  /// Extrai JSON do texto da resposta
   String _extractJson(String text) {
     final jsonMatch = RegExp(
       r'```(?:json)?\s*([\s\S]*?)\s*```',
     ).firstMatch(text);
-    if (jsonMatch != null) {
-      return jsonMatch.group(1)!.trim();
-    }
+    if (jsonMatch != null) return jsonMatch.group(1)!.trim();
 
     final jsonObjMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
-    if (jsonObjMatch != null) {
-      return jsonObjMatch.group(0)!.trim();
-    }
+    if (jsonObjMatch != null) return jsonObjMatch.group(0)!.trim();
 
     return text.trim();
   }

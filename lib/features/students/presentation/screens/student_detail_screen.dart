@@ -235,8 +235,9 @@ class _StudentDetailScreenState extends ConsumerState<StudentDetailScreen>
   // ─── Aba de Treinos ──────────────────────────────────────────────────────
 
   Widget _buildWorkoutsTab(BuildContext context) {
+    final personalId = ref.watch(currentUserProvider)?.uid ?? '';
     final workoutsAsync = ref.watch(
-      studentWorkoutsStreamProvider(widget.studentId),
+      personalStudentWorkoutsStreamProvider((widget.studentId, personalId)),
     );
 
     return workoutsAsync.when(

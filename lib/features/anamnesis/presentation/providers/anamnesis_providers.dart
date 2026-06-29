@@ -6,6 +6,7 @@ import 'package:new_gym_app/core/services/firebase_anamnesis_service.dart';
 import 'package:new_gym_app/core/services/firebase_exercise_service.dart';
 import 'package:new_gym_app/core/services/gemini_service.dart';
 import 'package:new_gym_app/core/services/rag_workout_service.dart';
+import 'package:new_gym_app/core/utils/anamnesis_template.dart';
 import 'package:new_gym_app/features/exercise_detail/presentation/providers/exercise_provider.dart';
 import 'package:new_gym_app/features/students/presentation/providers/workout_provider.dart';
 
@@ -117,8 +118,9 @@ class AnamnesisAnswerNotifier extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
 
-  /// Salva uma resposta e gera próxima pergunta se necessário
-  Future<AnamnesisQuestion?> saveAnswerAndGetNext({
+  /// Salva uma resposta. Quando a última pergunta BASE for respondida,
+  /// faz UMA chamada à IA para gerar o lote de perguntas diagnósticas.
+  Future<bool> saveAnswerAndGetNext({
     required String anamnesisId,
     required AnamnesisAnswer answer,
     required List<AnamnesisQuestion> allQuestions,
@@ -127,31 +129,62 @@ class AnamnesisAnswerNotifier extends Notifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
-      // Salva resposta
       await _anamnesisService.saveAnswer(
         anamnesisId: anamnesisId,
         answer: answer,
       );
 
-      // Atualiza lista de respostas
       final updatedAnswers = [...allAnswers, answer];
 
-      // IA gera próxima pergunta
-      final nextQuestion = await _geminiService.generateNextQuestion(
-        previousQuestions: allQuestions,
-        answers: updatedAnswers,
-      );
-
-      if (nextQuestion != null) {
-        // Adiciona pergunta dinâmica
-        await _anamnesisService.addDynamicQuestion(
-          anamnesisId: anamnesisId,
-          question: nextQuestion,
+      // Injeta perguntas sexo-específicas quando q2 é respondida (uma única vez)
+      if (answer.questionId == 'q2') {
+        final sexValue = answer.value?.toString() ?? '';
+        final alreadyInjected = allQuestions.any(
+          (q) => q.id.startsWith('qf') || q.id.startsWith('qm'),
         );
+
+        if (!alreadyInjected) {
+          List<AnamnesisQuestion> specific = [];
+          if (sexValue == 'Feminino') {
+            specific = AnamnesisTemplate.getFemaleQuestions();
+          } else if (sexValue == 'Masculino') {
+            specific = AnamnesisTemplate.getMaleQuestions();
+          }
+
+          if (specific.isNotEmpty) {
+            await _anamnesisService.addDynamicQuestions(
+              anamnesisId: anamnesisId,
+              questions: specific,
+            );
+            state = const AsyncValue.data(null);
+            return true;
+          }
+        }
+      }
+
+      final baseQuestions = allQuestions.where((q) => !q.isDynamic).toList();
+      final hasDynamicAlready = allQuestions.any((q) => q.isDynamic);
+
+      // Dispara a IA UMA única vez, após todas as perguntas base respondidas
+      if (!hasDynamicAlready &&
+          updatedAnswers.length >= baseQuestions.length) {
+        final batch = await _geminiService.generateDiagnosticBatch(
+          coreQuestions: baseQuestions,
+          coreAnswers: updatedAnswers,
+        );
+
+        if (batch.isNotEmpty) {
+          await _anamnesisService.addDynamicQuestions(
+            anamnesisId: anamnesisId,
+            questions: batch,
+          );
+          state = const AsyncValue.data(null);
+          return true; // há mais perguntas
+        }
       }
 
       state = const AsyncValue.data(null);
-      return nextQuestion;
+      return false; // sem novas perguntas adicionadas
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
       rethrow;
@@ -208,7 +241,9 @@ class WorkoutSuggestionNotifier extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
 
-  /// Gera sugestões de treino baseadas na anamnese
+  /// Gera sugestões de treino baseadas na anamnese.
+  /// A IA sugere exercícios livremente (ACSM/NSCA). Os exercícios só são
+  /// salvos na biblioteca quando o personal aprovar a sugestão.
   Future<List<WorkoutSuggestion>> generateSuggestions({
     required String anamnesisId,
   }) async {
@@ -220,12 +255,9 @@ class WorkoutSuggestionNotifier extends Notifier<AsyncValue<void>> {
         throw Exception('Anamnese não foi analisada ainda');
       }
 
-      final exercises = await _exerciseService.getAllExercises();
-
       final suggestions = await _ragService.generateWorkoutSuggestions(
         anamnesisId: anamnesisId,
         insights: insights,
-        availableExercises: exercises,
       );
 
       for (final suggestion in suggestions) {
@@ -241,7 +273,11 @@ class WorkoutSuggestionNotifier extends Notifier<AsyncValue<void>> {
   }
 
   /// Aprova sugestão, cria o treino no Firestore e retorna o workoutId.
-  Future<String> approveSuggestion(WorkoutSuggestion suggestion) async {
+  /// [editedExercises] permite ao personal ajustar a lista antes de aprovar.
+  Future<String> approveSuggestion(
+    WorkoutSuggestion suggestion, {
+    List<ExerciseSuggestion>? editedExercises,
+  }) async {
     state = const AsyncValue.loading();
 
     try {
@@ -259,10 +295,22 @@ class WorkoutSuggestionNotifier extends Notifier<AsyncValue<void>> {
         createdBy: anamnesis.personalId,
       );
 
-      for (final exercise in suggestion.exercises) {
+      final exercises = editedExercises ?? suggestion.exercises;
+      for (final exercise in exercises) {
+        // Garante que o exercício existe na biblioteca (cria se necessário)
+        final exerciseId = exercise.exerciseId.isNotEmpty
+            ? exercise.exerciseId
+            : await _exerciseService.findOrCreateByName(
+                name: exercise.exerciseName,
+                workoutType: exercise.muscleGroup,
+                series: exercise.series,
+                reps: _parseReps(exercise.reps),
+                instructions: exercise.notes,
+              );
+
         await workoutService.addExerciseToWorkout(
           workoutId: workoutId,
-          exerciseId: exercise.exerciseId,
+          exerciseId: exerciseId,
           series: exercise.series,
           reps: _parseReps(exercise.reps),
           notes: exercise.notes.isNotEmpty ? exercise.notes : null,

@@ -1,1 +1,29 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"newgymapp-f3667","appId":"1:310316534784:android:a72909d17c787d8b401ce5","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"newgymapp-f3667","configurations":{"android":"1:310316534784:android:a72909d17c787d8b401ce5","ios":"1:310316534784:ios:44e4a06d5d88e617401ce5","macos":"1:310316534784:ios:44e4a06d5d88e617401ce5","web":"1:310316534784:web:ca050477f7949a4d401ce5","windows":"1:310316534784:web:8f121d2eabdb36ba401ce5"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "newgymapp-f3667",
+          "appId": "1:310316534784:android:a72909d17c787d8b401ce5",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "newgymapp-f3667",
+          "configurations": {
+            "android": "1:310316534784:android:a72909d17c787d8b401ce5",
+            "ios": "1:310316534784:ios:44e4a06d5d88e617401ce5",
+            "macos": "1:310316534784:ios:44e4a06d5d88e617401ce5",
+            "web": "1:310316534784:web:ca050477f7949a4d401ce5",
+            "windows": "1:310316534784:web:8f121d2eabdb36ba401ce5"
+          }
+        }
+      }
+    }
+  }
+}

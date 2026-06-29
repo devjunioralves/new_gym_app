@@ -17,7 +17,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  UserRole _selectedRole = UserRole.student;
+  final _crefController = TextEditingController();
 
   @override
   void dispose() {
@@ -25,18 +25,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _crefController.dispose();
     super.dispose();
   }
+
+  bool _isSubmitting = false;
 
   Future<void> _submitRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
+    setState(() => _isSubmitting = true);
     try {
       await ref.read(authProvider.notifier).register(
             _nameController.text.trim(),
             _emailController.text.trim(),
             _passwordController.text,
-            _selectedRole,
+            UserRole.personalTrainer,
+            cref: _crefController.text.trim().isEmpty
+                ? null
+                : _crefController.text.trim(),
           );
     } catch (e) {
       if (mounted) {
@@ -47,12 +54,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(authProvider).isLoading;
 
     ref.listen(authProvider, (previous, next) {
       next.whenData((user) {
@@ -122,44 +130,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<UserRole>(
-                  initialValue: _selectedRole,
+                TextFormField(
+                  controller: _crefController,
                   decoration: const InputDecoration(
-                    labelText: 'Tipo de Usuário',
+                    labelText: 'CREF (opcional)',
+                    hintText: 'Ex: 123456-G/SP',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.badge_outlined),
                   ),
-                  items: UserRole.values.map((role) {
-                    return DropdownMenuItem(
-                      value: role,
-                      child: Row(
-                        children: [
-                          Icon(
-                            role.isStudent
-                                ? Icons.school
-                                : Icons.fitness_center,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(role.displayName),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedRole = value;
-                      });
-                    }
-                  },
                 ),
                 const SizedBox(height: 40),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                   ),
-                  onPressed: isLoading ? null : _submitRegister,
-                  child: isLoading
+                  onPressed: _isSubmitting ? null : _submitRegister,
+                  child: _isSubmitting
                       ? const SizedBox(
                           height: 20,
                           width: 20,

@@ -13,6 +13,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -21,10 +22,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _login() async {
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(authProvider.notifier).login(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+    } catch (_) {
+      // erro tratado pelo ref.listen abaixo
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(authProvider).isLoading;
-
     ref.listen(authProvider, (previous, next) {
       next.whenData((user) {
         if (user != null) context.go('/');
@@ -92,13 +105,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                   ),
-                  onPressed: isLoading
-                      ? null
-                      : () => ref.read(authProvider.notifier).login(
-                            _emailController.text.trim(),
-                            _passwordController.text,
-                          ),
-                  child: isLoading
+                  onPressed: _isSubmitting ? null : _login,
+                  child: _isSubmitting
                       ? const SizedBox(
                           height: 20,
                           width: 20,

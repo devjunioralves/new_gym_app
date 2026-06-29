@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:new_gym_app/core/models/anamnesis_insights_model.dart';
 import 'package:new_gym_app/core/models/workout_suggestion_model.dart';
 import 'package:new_gym_app/features/anamnesis/presentation/providers/anamnesis_providers.dart';
+import 'package:new_gym_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:new_gym_app/features/exercise_detail/presentation/providers/exercise_provider.dart';
 
-/// Tela para Personal visualizar insights e aprovar sugestões de treino
+/// Tela exclusiva para Personal Trainer visualizar insights e aprovar sugestões
 class AnamnesisInsightsScreen extends ConsumerStatefulWidget {
   final String anamnesisId;
 
@@ -36,6 +38,28 @@ class _AnamnesisInsightsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+
+    if (user == null || user.isStudent) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Acesso restrito')),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'Esta área é exclusiva para Personal Trainers.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final insightsAsync = ref.watch(
       anamnesisInsightsProvider(widget.anamnesisId),
     );
@@ -49,6 +73,9 @@ class _AnamnesisInsightsScreenState
         backgroundColor: Theme.of(context).primaryColor,
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(text: 'Insights', icon: Icon(Icons.analytics)),
             Tab(text: 'Sugestões', icon: Icon(Icons.fitness_center)),
@@ -383,31 +410,29 @@ class _AnamnesisInsightsScreenState
 
                 const SizedBox(height: 16),
 
-                // Botão de aprovar
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: suggestion.approvedByPersonal
-                        ? null
-                        : () => _approveSuggestion(suggestion),
-                    icon: Icon(
-                      suggestion.approvedByPersonal
-                          ? Icons.check_circle
-                          : Icons.thumb_up,
+                if (!suggestion.approvedByPersonal)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showEditAndApproveSheet(suggestion),
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Editar e Aprovar Treino'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
-                    label: Text(
-                      suggestion.approvedByPersonal
-                          ? 'Aprovado'
-                          : 'Aprovar e Criar Treino',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: suggestion.approvedByPersonal
-                          ? Colors.grey
-                          : Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
+                  )
+                else
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Treino criado', style: TextStyle(color: Colors.green)),
+                    ],
                   ),
-                ),
               ],
             ),
           ),
@@ -564,50 +589,154 @@ class _AnamnesisInsightsScreenState
     }
   }
 
-  Future<void> _approveSuggestion(WorkoutSuggestion suggestion) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _showEditAndApproveSheet(WorkoutSuggestion suggestion) async {
+    final editedExercises = List<ExerciseSuggestion>.from(suggestion.exercises);
+    bool confirmed = false;
+
+    await showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Aprovar Sugestão'),
-        content: const Text(
-          'Deseja aprovar esta sugestão?\n\n'
-          'Um treino será criado automaticamente na lista do aluno.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Aprovar e Criar Treino'),
-          ),
-        ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return DraggableScrollableSheet(
+            initialChildSize: 0.85,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (_, controller) => Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          suggestion.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView(
+                    controller: controller,
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      const Text(
+                        'Exercícios',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      ...editedExercises.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final ex = entry.value;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            title: Text(
+                              ex.exerciseName,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: Text('${ex.series} séries × ${ex.reps}'),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Remover',
+                              onPressed: () =>
+                                  setSheetState(() => editedExercises.removeAt(i)),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await _showExercisePicker(sheetContext);
+                          if (picked != null) {
+                            setSheetState(() => editedExercises.add(picked));
+                          }
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Adicionar da biblioteca'),
+                      ),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    16 + MediaQuery.of(ctx).viewInsets.bottom,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: editedExercises.isEmpty
+                          ? null
+                          : () {
+                              confirmed = true;
+                              Navigator.of(sheetContext).pop();
+                            },
+                      icon: const Icon(Icons.check),
+                      label: Text(
+                        'Confirmar e criar treino (${editedExercises.length})',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Criando treino...'),
+          ],
+        ),
+      ),
     );
 
     try {
       final workoutId = await ref
           .read(workoutSuggestionNotifierProvider.notifier)
-          .approveSuggestion(suggestion);
+          .approveSuggestion(suggestion, editedExercises: editedExercises);
 
       if (!mounted) return;
-      Navigator.of(context).pop(); // fecha loading
-
+      Navigator.of(context).pop();
       ref.invalidate(workoutSuggestionsProvider(widget.anamnesisId));
-
       context.push('/workout-detail/$workoutId');
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop(); // fecha loading
+      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro ao criar treino: $e'),
@@ -615,5 +744,77 @@ class _AnamnesisInsightsScreenState
         ),
       );
     }
+  }
+
+  Future<ExerciseSuggestion?> _showExercisePicker(BuildContext sheetContext) async {
+    final exercisesAsync = ref.read(exerciseListProvider);
+    final exercises = exercisesAsync.asData?.value ?? [];
+
+    return showDialog<ExerciseSuggestion>(
+      context: sheetContext,
+      builder: (dialogContext) {
+        String search = '';
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final filtered = exercises
+                .where((e) => e.name.toLowerCase().contains(search.toLowerCase()))
+                .toList();
+
+            return AlertDialog(
+              title: const Text('Selecionar exercício'),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Buscar exercício...',
+                        prefixIcon: Icon(Icons.search),
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => setDialogState(() => search = v),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? const Center(child: Text('Nenhum exercício encontrado'))
+                          : ListView.builder(
+                              itemCount: filtered.length,
+                              itemBuilder: (_, i) {
+                                final ex = filtered[i];
+                                return ListTile(
+                                  title: Text(ex.name),
+                                  subtitle: Text(ex.workoutType),
+                                  onTap: () => Navigator.of(dialogContext).pop(
+                                    ExerciseSuggestion(
+                                      exerciseId: ex.id,
+                                      exerciseName: ex.name,
+                                      muscleGroup: ex.workoutType,
+                                      series: 3,
+                                      reps: '10-12',
+                                      notes: '',
+                                      reason: 'Adicionado manualmente pelo personal',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }

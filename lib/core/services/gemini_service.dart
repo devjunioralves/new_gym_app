@@ -4,58 +4,64 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:new_gym_app/core/models/anamnesis_insights_model.dart';
 import 'package:new_gym_app/core/models/anamnesis_model.dart';
 
-/// Service para integração com Google Gemini (IA)
 class GeminiService {
   late final GenerativeModel _model;
   final String apiKey;
 
   GeminiService({required this.apiKey}) {
     _model = GenerativeModel(
-      model: 'gemini-1.5-pro',
+      model: 'gemini-3.5-flash',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
       ),
     );
   }
 
-  /// Gera a próxima pergunta dinâmica baseada nas respostas anteriores
-  /// Retorna null se a IA determinar que já tem informação suficiente
-  Future<AnamnesisQuestion?> generateNextQuestion({
-    required List<AnamnesisQuestion> previousQuestions,
-    required List<AnamnesisAnswer> answers,
+  /// Chamada única após todas as perguntas base: gera 3–5 perguntas
+  /// diagnósticas personalizadas baseadas no conjunto de respostas.
+  Future<List<AnamnesisQuestion>> generateDiagnosticBatch({
+    required List<AnamnesisQuestion> coreQuestions,
+    required List<AnamnesisAnswer> coreAnswers,
   }) async {
-    final context = _buildQAContext(previousQuestions, answers);
+    final context = _buildQAContext(coreQuestions, coreAnswers);
 
-    final prompt =
-        '''
-Você é um especialista em avaliação física e anamnese para treino personalizado.
+    final prompt = '''
+Você é um profissional de educação física experiente realizando uma avaliação inicial.
+Acabou de receber as respostas essenciais abaixo de um novo aluno.
 
-Analise as respostas do aluno e decida:
-1. Se precisa de MAIS informações para criar um treino seguro e eficaz, gere UMA pergunta relevante
-2. Se já tem informação SUFICIENTE sobre objetivos, saúde e limitações, retorne "COMPLETE"
-
-CONTEXTO DAS RESPOSTAS:
+RESPOSTAS DO ALUNO:
 $context
 
-INSTRUÇÕES:
-- Faça perguntas objetivas e diretas
-- Priorize informações sobre saúde, lesões e limitações
-- Evite perguntas redundantes
-- Seja profissional mas acessível
+TAREFA:
+Gere entre 3 e 5 perguntas de aprofundamento diagnóstico, altamente personalizadas para ESTE aluno.
+O objetivo é construir um diagnóstico clínico-funcional que oriente a prescrição de exercício.
+
+DIRETRIZES:
+- Analise TODAS as respostas em conjunto antes de formular as perguntas
+- A anamnese já cobre: identificação, objetivo, histórico de treino, estilo de vida, saúde clínica, tabagismo, álcool, cirurgias, sintomas durante esforço, saúde mental — e perguntas específicas por sexo biológico
+- Priorize aprofundamento em áreas de risco clínico que ficaram vagas: condições de saúde sem detalhes, lesões sem histórico, respostas positivas em triagem de segurança (dor no peito, tontura)
+- Aprofunde pontos específicos: se disse "tenho dor no joelho", pergunte intensidade, o que piora, se já fez fisioterapia
+- Considere o objetivo e nível: sedentário → barreiras e rotina; avançado → periodização e histórico específico
+- Se fumante ou ex-fumante: investigue capacidade cardiorrespiratória atual
+- Se relatou problemas de saúde mental: pergunte se isso impacta disposição para treinar e se há restrições do psiquiatra
+- Se usou ou usa hormônios exógenos (qm2): investigue há quanto tempo, exames recentes
+- As perguntas devem soar naturais e humanas, não como um formulário burocrático
+- NÃO repita o que já foi perguntado
 
 Responda APENAS com JSON válido:
 {
-  "action": "ask" ou "complete",
-  "question": {
-    "text": "sua pergunta aqui",
-    "type": "text" | "multipleChoice" | "yesNo" | "scale",
-    "options": ["opção1", "opção2"],
-    "reason": "breve justificativa técnica"
-  }
+  "questions": [
+    {
+      "text": "pergunta personalizada e direta",
+      "type": "text" | "multipleChoice" | "yesNo" | "scale",
+      "options": ["opção 1", "opção 2"],
+      "reason": "justificativa clínica para esta pergunta"
+    }
+  ]
 }
 ''';
 
@@ -64,23 +70,25 @@ Responda APENAS com JSON válido:
       final jsonText = _extractJson(response.text ?? '');
       final json = jsonDecode(jsonText) as Map<String, dynamic>;
 
-      if (json['action'] == 'complete') return null;
+      final questionsData = json['questions'] as List<dynamic>? ?? [];
+      final baseOrder = coreQuestions.length;
 
-      final questionData = json['question'] as Map<String, dynamic>;
-      final nextOrder = previousQuestions.length;
-
-      return AnamnesisQuestion(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: questionData['text'] as String,
-        type: _parseQuestionType(questionData['type'] as String),
-        options: (questionData['options'] as List<dynamic>?)?.cast<String>(),
-        isRequired: true,
-        isDynamic: true,
-        generatedReason: questionData['reason'] as String?,
-        order: nextOrder,
-      );
+      return questionsData.asMap().entries.map((entry) {
+        final i = entry.key;
+        final q = entry.value as Map<String, dynamic>;
+        return AnamnesisQuestion(
+          id: '${DateTime.now().millisecondsSinceEpoch}_$i',
+          text: q['text'] as String,
+          type: _parseQuestionType(q['type'] as String? ?? 'text'),
+          options: (q['options'] as List<dynamic>?)?.cast<String>(),
+          isRequired: true,
+          isDynamic: true,
+          generatedReason: q['reason'] as String?,
+          order: baseOrder + i,
+        );
+      }).toList();
     } catch (e) {
-      throw Exception('Erro ao gerar pergunta: $e');
+      return [];
     }
   }
 
@@ -92,50 +100,33 @@ Responda APENAS com JSON válido:
   }) async {
     final context = _buildQAContext(questions, answers);
 
-    final prompt =
-        '''
+    final prompt = '''
 Você é um especialista em fisiologia do exercício e prescrição de treino.
 
-Analise esta anamnese e forneça insights profundos baseados em evidências científicas.
+Analise esta anamnese e forneça insights baseados em evidências científicas.
 
 ANAMNESE:
 $context
-
-TAREFA:
-Retorne uma análise completa em JSON com:
-1. Resumo do perfil do aluno
-2. Condições de saúde identificadas (com severidade e restrições)
-3. Objetivos de treino
-4. Limitações físicas
-5. Nível de condicionamento atual
-6. Risco de lesão (0.0 a 1.0)
-7. Recomendações gerais
-
-IMPORTANTE:
-- Base suas conclusões em guidelines da ACSM e NSCA
-- Identifique contraindicações absolutas e relativas
-- Seja conservador em relação à segurança
-- Use terminologia técnica mas compreensível
 
 Responda APENAS com JSON válido:
 {
   "summary": "resumo em 2-3 frases do perfil geral",
   "conditions": [
     {
-      "name": "nome da condição (ex: Hipertensão)",
+      "name": "nome da condição",
       "severity": "mild" | "moderate" | "severe",
-      "restrictions": ["exercício a evitar 1", "exercício a evitar 2"],
-      "notes": "observações adicionais"
+      "restrictions": ["exercício a evitar"],
+      "notes": "observações"
     }
   ],
-  "goals": ["objetivo 1", "objetivo 2"],
-  "limitations": ["limitação física 1", "limitação 2"],
+  "goals": ["objetivo 1"],
+  "limitations": ["limitação física 1"],
   "fitnessLevel": "sedentary" | "beginner" | "intermediate" | "advanced",
-  "injuryRisk": 0.0-1.0,
+  "injuryRisk": 0.0,
   "recommendations": {
-    "frequency": "frequência semanal sugerida",
+    "frequency": "frequência semanal",
     "duration": "duração das sessões",
-    "focus": "foco principal do treino",
+    "focus": "foco principal",
     "progression": "estratégia de progressão",
     "monitoring": "parâmetros a monitorar"
   }
@@ -157,12 +148,14 @@ Responda APENAS com JSON válido:
     }
   }
 
-  /// Constrói contexto formatado de perguntas e respostas
   String _buildQAContext(
     List<AnamnesisQuestion> questions,
     List<AnamnesisAnswer> answers,
   ) {
+    final now = DateTime.now();
     final buffer = StringBuffer();
+    buffer.writeln('DATA DE HOJE: ${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}');
+    buffer.writeln();
 
     for (final question in questions) {
       final answer = answers.firstWhere(
@@ -173,45 +166,59 @@ Responda APENAS com JSON válido:
           answeredAt: DateTime.now(),
         ),
       );
-
       buffer.writeln('P: ${question.text}');
-      buffer.writeln('R: ${_formatAnswer(answer.value)}');
+      final formatted = _formatAnswer(answer.value);
+      buffer.write('R: $formatted');
+
+      // Se for uma data de nascimento, calcula e anexa a idade
+      if (question.type == QuestionType.date && formatted != 'Não respondida') {
+        final age = _calcularIdade(formatted, now);
+        if (age != null) buffer.write(' (idade: $age anos)');
+      }
+      buffer.writeln();
       buffer.writeln();
     }
-
     return buffer.toString();
   }
 
-  /// Formata valor da resposta para exibição
-  String _formatAnswer(dynamic value) {
-    if (value is List) {
-      return value.join(', ');
-    } else if (value is DateTime) {
-      return value.toString().split(' ')[0];
+  int? _calcularIdade(String dataNascimento, DateTime hoje) {
+    try {
+      final partes = dataNascimento.split('/');
+      if (partes.length != 3) return null;
+      final nascimento = DateTime(
+        int.parse(partes[2]),
+        int.parse(partes[1]),
+        int.parse(partes[0]),
+      );
+      int idade = hoje.year - nascimento.year;
+      if (hoje.month < nascimento.month ||
+          (hoje.month == nascimento.month && hoje.day < nascimento.day)) {
+        idade--;
+      }
+      return idade;
+    } catch (_) {
+      return null;
     }
+  }
+
+  String _formatAnswer(dynamic value) {
+    if (value is List) return value.join(', ');
+    if (value is DateTime) return value.toString().split(' ')[0];
     return value.toString();
   }
 
-  /// Extrai JSON do texto da resposta (remove markdown se presente)
   String _extractJson(String text) {
-    // Remove markdown code blocks se presentes
     final jsonMatch = RegExp(
       r'```(?:json)?\s*([\s\S]*?)\s*```',
     ).firstMatch(text);
-    if (jsonMatch != null) {
-      return jsonMatch.group(1)!.trim();
-    }
+    if (jsonMatch != null) return jsonMatch.group(1)!.trim();
 
-    // Tenta encontrar objeto JSON diretamente
     final jsonObjMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
-    if (jsonObjMatch != null) {
-      return jsonObjMatch.group(0)!.trim();
-    }
+    if (jsonObjMatch != null) return jsonObjMatch.group(0)!.trim();
 
     return text.trim();
   }
 
-  /// Converte string de tipo para enum
   QuestionType _parseQuestionType(String type) {
     switch (type.toLowerCase()) {
       case 'text':

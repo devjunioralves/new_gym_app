@@ -77,14 +77,16 @@ service cloud.firestore {
         resource.data.studentId == request.auth.uid
       );
 
-      // insights subcollection — gerada pela IA após análise
+      // insights subcollection — gerada pela IA quando o aluno finaliza a anamnese
       match /insights/{insightId} {
         allow read: if isAuthenticated() && (
           get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.studentId == request.auth.uid ||
           get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.personalId == request.auth.uid
         );
-        allow write: if isAuthenticated() &&
-          get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.personalId == request.auth.uid;
+        allow write: if isAuthenticated() && (
+          get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.studentId == request.auth.uid ||
+          get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.personalId == request.auth.uid
+        );
       }
     }
 

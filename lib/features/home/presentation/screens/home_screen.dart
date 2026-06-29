@@ -8,6 +8,7 @@ import 'package:new_gym_app/core/shared_widgets/app_footer.dart';
 import 'package:new_gym_app/features/anamnesis/presentation/providers/anamnesis_providers.dart';
 import 'package:new_gym_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:new_gym_app/features/exercise_detail/presentation/providers/exercise_provider.dart';
+import 'package:new_gym_app/core/widgets/user_avatar.dart';
 import 'package:new_gym_app/features/home/presentation/widgets/exercise_card.dart';
 
 import '../../../students/presentation/providers/workout_provider.dart';
@@ -94,11 +95,10 @@ class HomeScreen extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
+                  UserAvatar(
+                    name: user.name,
+                    photoUrl: user.photoUrl,
                     radius: 24,
-                    backgroundImage: user.photoUrl.startsWith('http')
-                        ? NetworkImage(user.photoUrl)
-                        : AssetImage(user.photoUrl) as ImageProvider,
                   ),
                   const SizedBox(width: 16),
                   Column(
@@ -204,12 +204,16 @@ class HomeScreen extends ConsumerWidget {
     final workoutsAsync = ref.watch(studentWorkoutsStreamProvider(user.uid));
     final anamnesesAsync = ref.watch(studentAnamnesesProvider(user.uid));
 
-    final pendingAnamneses = anamnesesAsync.when(
-      data: (list) =>
-          list.where((a) => a.status == AnamnesisStatus.inProgress).toList(),
-      loading: () => <Anamnesis>[],
-      error: (_, __) => <Anamnesis>[],
-    );
+    // Usa asData?.value para manter os últimos dados conhecidos durante
+    // erros ou recarregamentos — evita piscar ao ciclar loading/error.
+    final pendingAnamneses = anamnesesAsync.asData?.value
+            .where((a) => a.status == AnamnesisStatus.inProgress)
+            .toList() ??
+        [];
+
+    final workouts = workoutsAsync.asData?.value ?? [];
+    final isLoadingWorkouts =
+        workoutsAsync.isLoading && workoutsAsync.asData == null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,109 +221,85 @@ class HomeScreen extends ConsumerWidget {
         if (pendingAnamneses.isNotEmpty)
           _buildPendingAnamnesisSection(context, pendingAnamneses),
 
-        workoutsAsync.when(
-          data: (workouts) {
-            if (workouts.isEmpty && pendingAnamneses.isEmpty) {
-              return Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(
-                        Icons.fitness_center_outlined,
-                        size: 80,
-                        color: Colors.grey,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'Nenhum treino disponível',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Aguarde seu personal trainer criar um treino para você',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            if (workouts.isEmpty) return const SizedBox.shrink();
-
-            return Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      'Meus Treinos',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: workouts.length,
-                      itemBuilder: (context, index) {
-                        final workout = workouts[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue,
-                              child: Text(
-                                '${workout.exercises.length}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              workout.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '${workout.exercises.length} exercício(s)',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              context.push('/workout-detail/${workout.id}');
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-          loading: () => const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (error, _) => Expanded(
+        if (isLoadingWorkouts)
+          const Expanded(child: Center(child: CircularProgressIndicator()))
+        else if (workouts.isEmpty && pendingAnamneses.isEmpty)
+          Expanded(
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text('Erro ao carregar treinos: $error'),
+                children: const [
+                  Icon(
+                    Icons.fitness_center_outlined,
+                    size: 80,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Nenhum treino disponível',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Aguarde seu personal trainer criar um treino para você',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             ),
-          ),
-        ),
+          )
+        else if (workouts.isNotEmpty)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'Meus Treinos',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: workouts.length,
+                    itemBuilder: (context, index) {
+                      final workout = workouts[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.blue,
+                            child: Text(
+                              '${workout.exercises.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            workout.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            '${workout.exercises.length} exercício(s)',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () =>
+                              context.push('/workout-detail/${workout.id}'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          const SizedBox.shrink(),
       ],
     );
   }

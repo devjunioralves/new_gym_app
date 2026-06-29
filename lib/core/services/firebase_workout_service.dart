@@ -143,6 +143,23 @@ class FirebaseWorkoutService {
         );
   }
 
+  Stream<List<WorkoutModel>> personalStudentWorkoutsStream(
+    String studentId,
+    String personalId,
+  ) {
+    return _firestore
+        .collection('workouts')
+        .where('studentId', isEqualTo: studentId)
+        .where('createdBy', isEqualTo: personalId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => WorkoutModel.fromMap(doc.data()))
+              .toList(),
+        );
+  }
+
   Future<List<WorkoutModel>> getWorkoutsByPersonal(String personalId) async {
     try {
       final snapshot = await _firestore

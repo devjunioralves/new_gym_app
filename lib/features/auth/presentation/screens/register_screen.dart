@@ -28,21 +28,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  void _submitRegister() {
-    if (_formKey.currentState!.validate()) {
-      ref
-          .read(authProvider.notifier)
-          .register(
-            _nameController.text,
-            _emailController.text,
+  Future<void> _submitRegister() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      await ref.read(authProvider.notifier).register(
+            _nameController.text.trim(),
+            _emailController.text.trim(),
             _passwordController.text,
             _selectedRole,
           );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(authProvider).isLoading;
+
     ref.listen(authProvider, (previous, next) {
       next.whenData((user) {
         if (user != null) {
@@ -147,8 +158,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                   ),
-                  onPressed: _submitRegister,
-                  child: const Text('Criar e acessar'),
+                  onPressed: isLoading ? null : _submitRegister,
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Criar e acessar'),
                 ),
                 const SizedBox(height: 16),
                 TextButton(

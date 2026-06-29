@@ -35,7 +35,12 @@ class ExerciseCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(radius: 24, backgroundImage: AssetImage(imageUrl)),
+            CircleAvatar(
+              radius: 24,
+              backgroundImage: imageUrl.startsWith('http')
+                  ? NetworkImage(imageUrl)
+                  : AssetImage(imageUrl) as ImageProvider,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

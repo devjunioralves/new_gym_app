@@ -11,17 +11,22 @@ class FirebaseAuthService {
       firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  app_model.User? _cachedUser;
+
   Stream<app_model.User?> get authStateChanges {
     return _firebaseAuth.authStateChanges().asyncMap((firebaseUser) async {
-      if (firebaseUser == null) return null;
-      return await _getUserFromFirestore(firebaseUser.uid);
+      if (firebaseUser == null) {
+        _cachedUser = null;
+        return null;
+      }
+      _cachedUser = await _getUserFromFirestore(firebaseUser.uid);
+      return _cachedUser;
     });
   }
 
   app_model.User? get currentUser {
-    final firebaseUser = _firebaseAuth.currentUser;
-    if (firebaseUser == null) return null;
-    return null;
+    if (_firebaseAuth.currentUser == null) return null;
+    return _cachedUser;
   }
 
   Future<app_model.User> login(String email, String password) async {
@@ -30,7 +35,8 @@ class FirebaseAuthService {
         email: email,
         password: password,
       );
-      return await _getUserFromFirestore(credential.user!.uid);
+      _cachedUser = await _getUserFromFirestore(credential.user!.uid);
+      return _cachedUser!;
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
@@ -60,6 +66,7 @@ class FirebaseAuthService {
 
       await _firestore.collection('users').doc(user.uid).set(user.toMap());
 
+      _cachedUser = user;
       return user;
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -139,13 +146,15 @@ class FirebaseAuthService {
         'email': email,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      return await _getUserFromFirestore(uid);
+      _cachedUser = await _getUserFromFirestore(uid);
+      return _cachedUser!;
     } catch (e) {
       throw Exception('Erro ao atualizar perfil: $e');
     }
   }
 
   Future<void> logout() async {
+    _cachedUser = null;
     await _firebaseAuth.signOut();
   }
 

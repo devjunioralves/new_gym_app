@@ -51,6 +51,9 @@ app.*.map.json
 **/GoogleService-Info.plist
 firebase_options.dart
 
+# Environment variables (API keys)
+.env
+
 # iOS/macOS generated files
 **/ios/Runner/GeneratedPluginRegistrant.*
 **/ios/.symlinks/

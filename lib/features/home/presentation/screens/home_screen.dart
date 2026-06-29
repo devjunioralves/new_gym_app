@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:new_gym_app/core/models/anamnesis_model.dart';
 import 'package:new_gym_app/core/models/exercise_model.dart';
 import 'package:new_gym_app/core/models/user_model.dart';
 import 'package:new_gym_app/core/shared_widgets/app_footer.dart';
+import 'package:new_gym_app/features/anamnesis/presentation/providers/anamnesis_providers.dart';
 import 'package:new_gym_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:new_gym_app/features/exercise_detail/presentation/providers/exercise_provider.dart';
 import 'package:new_gym_app/features/home/presentation/widgets/exercise_card.dart';
@@ -94,7 +96,9 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundImage: AssetImage(user.photoUrl),
+                    backgroundImage: user.photoUrl.startsWith('http')
+                        ? NetworkImage(user.photoUrl)
+                        : AssetImage(user.photoUrl) as ImageProvider,
                   ),
                   const SizedBox(width: 16),
                   Column(
@@ -198,91 +202,218 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildStudentWorkouts(BuildContext context, WidgetRef ref, User user) {
     final workoutsAsync = ref.watch(studentWorkoutsStreamProvider(user.uid));
+    final anamnesesAsync = ref.watch(studentAnamnesesProvider(user.uid));
 
-    return workoutsAsync.when(
-      data: (workouts) {
-        if (workouts.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+    final pendingAnamneses = anamnesesAsync.when(
+      data: (list) =>
+          list.where((a) => a.status == AnamnesisStatus.inProgress).toList(),
+      loading: () => <Anamnesis>[],
+      error: (_, __) => <Anamnesis>[],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (pendingAnamneses.isNotEmpty)
+          _buildPendingAnamnesisSection(context, pendingAnamneses),
+
+        workoutsAsync.when(
+          data: (workouts) {
+            if (workouts.isEmpty && pendingAnamneses.isEmpty) {
+              return Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(
+                        Icons.fitness_center_outlined,
+                        size: 80,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Nenhum treino disponível',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Aguarde seu personal trainer criar um treino para você',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            if (workouts.isEmpty) return const SizedBox.shrink();
+
+            return Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(
+                      'Meus Treinos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: workouts.length,
+                      itemBuilder: (context, index) {
+                        final workout = workouts[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.blue,
+                              child: Text(
+                                '${workout.exercises.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              workout.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${workout.exercises.length} exercício(s)',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              context.push('/workout-detail/${workout.id}');
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+          loading: () => const Expanded(
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, _) => Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Erro ao carregar treinos: $error'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPendingAnamnesisSection(
+    BuildContext context,
+    List<Anamnesis> pending,
+  ) {
+    return Container(
+      color: Colors.orange.shade50,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.assignment_late, color: Colors.orange),
+              SizedBox(width: 8),
+              Text(
+                'Anamnese Pendente',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Responda a anamnese para que seu personal possa criar um treino personalizado para você.',
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+          const SizedBox(height: 12),
+          ...pending.map((a) => _buildPendingAnamnesisCard(context, a)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingAnamnesisCard(
+    BuildContext context,
+    Anamnesis anamnesis,
+  ) {
+    final answered = anamnesis.answers.length;
+    final total = anamnesis.questions.length;
+    final progress = total > 0 ? answered / total : 0.0;
+    final isStarted = answered > 0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Colors.orange, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  Icons.fitness_center_outlined,
-                  size: 80,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 16),
                 Text(
-                  'Nenhum treino disponível',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  isStarted ? 'Continuar Anamnese' : 'Nova Anamnese',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 8),
                 Text(
-                  'Aguarde seu personal trainer criar um treino para você',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                  textAlign: TextAlign.center,
+                  '$answered/$total perguntas',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'Meus Treinos',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.grey.shade200,
+              color: Colors.orange,
+              minHeight: 6,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () =>
+                    context.push('/answer-anamnesis/${anamnesis.id}'),
+                icon: Icon(isStarted ? Icons.play_arrow : Icons.edit_note),
+                label: Text(isStarted ? 'Continuar' : 'Responder Agora'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: workouts.length,
-                itemBuilder: (context, index) {
-                  final workout = workouts[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blue,
-                        child: Text(
-                          '${workout.exercises.length}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        workout.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        '${workout.exercises.length} exercício(s)',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        context.push('/workout-detail/${workout.id}');
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 60, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('Erro ao carregar treinos: $error'),
           ],
         ),
       ),

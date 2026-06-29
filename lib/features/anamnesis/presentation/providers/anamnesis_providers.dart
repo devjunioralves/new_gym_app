@@ -7,6 +7,7 @@ import 'package:new_gym_app/core/services/firebase_exercise_service.dart';
 import 'package:new_gym_app/core/services/gemini_service.dart';
 import 'package:new_gym_app/core/services/rag_workout_service.dart';
 import 'package:new_gym_app/features/exercise_detail/presentation/providers/exercise_provider.dart';
+import 'package:new_gym_app/features/students/presentation/providers/workout_provider.dart';
 
 // ========== SERVICES ==========
 
@@ -15,49 +16,58 @@ final anamnesisServiceProvider = Provider<FirebaseAnamnesisService>((ref) {
   return FirebaseAnamnesisService();
 });
 
+const _geminiApiKey = String.fromEnvironment('GEMINI_API_KEY');
+
 /// Provider do serviço Gemini (IA)
-/// IMPORTANTE: Configure sua API key nas variáveis de ambiente
 final geminiServiceProvider = Provider<GeminiService>((ref) {
-  // TODO: Adicionar API key do Gemini
-  // Opção 1: Variável de ambiente
-  // const apiKey = String.fromEnvironment('GEMINI_API_KEY');
-
-  // Opção 2: Hardcoded (NÃO recomendado para produção)
-  const apiKey = 'YOUR_GEMINI_API_KEY_HERE';
-
-  if (apiKey.isEmpty || apiKey == 'YOUR_GEMINI_API_KEY_HERE') {
+  if (_geminiApiKey.isEmpty) {
     throw Exception(
-      'Configure sua API key do Gemini!\n'
-      'Obtenha em: https://ai.google.dev/',
+      'GEMINI_API_KEY não configurada.\n'
+      'Preencha o arquivo .env e rode via VS Code (launch.json) '
+      'ou passe --dart-define-from-file=.env ao executar.',
     );
   }
-
-  return GeminiService(apiKey: apiKey);
+  return GeminiService(apiKey: _geminiApiKey);
 });
 
 /// Provider do serviço RAG (sugestões de treino)
 final ragWorkoutServiceProvider = Provider<RAGWorkoutService>((ref) {
-  const apiKey = String.fromEnvironment(
-    'GEMINI_API_KEY',
-    defaultValue: 'YOUR_GEMINI_API_KEY_HERE',
-  );
-
-  if (apiKey.isEmpty || apiKey == 'YOUR_GEMINI_API_KEY_HERE') {
-    throw Exception('Configure sua API key do Gemini!');
+  if (_geminiApiKey.isEmpty) {
+    throw Exception(
+      'GEMINI_API_KEY não configurada.\n'
+      'Preencha o arquivo .env e rode via VS Code (launch.json) '
+      'ou passe --dart-define-from-file=.env ao executar.',
+    );
   }
-
-  return RAGWorkoutService(apiKey: apiKey);
+  return RAGWorkoutService(apiKey: _geminiApiKey);
 });
 
 // ========== ANAMNESIS ==========
 
-/// Stream de anamneses do aluno atual
+/// Stream de anamneses do aluno — usado pelo próprio aluno (home screen).
+/// Query filtra apenas por studentId; regra Firestore satisfeita porque
+/// request.auth.uid == studentId.
 final studentAnamnesesProvider = StreamProvider.family<List<Anamnesis>, String>(
   (ref, studentId) {
     final service = ref.watch(anamnesisServiceProvider);
     return service.getStudentAnamneses(studentId);
   },
 );
+
+/// Stream de anamneses de um aluno vistas pelo PT — usado em StudentDetailScreen.
+/// A query filtra por (personalId, studentId) para satisfazer a regra Firestore
+/// que exige resource.data.personalId == request.auth.uid.
+final ptStudentAnamnesesProvider =
+    StreamProvider.family<List<Anamnesis>, (String, String)>(
+      (ref, params) {
+        final (studentId, personalId) = params;
+        final service = ref.watch(anamnesisServiceProvider);
+        return service.getStudentAnamnesesByPersonal(
+          studentId: studentId,
+          personalId: personalId,
+        );
+      },
+    );
 
 /// Stream de anamneses criadas pelo personal
 final personalAnamnesesProvider =
@@ -205,23 +215,19 @@ class WorkoutSuggestionNotifier extends Notifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
-      // Busca insights
       final insights = await _anamnesisService.getInsights(anamnesisId);
       if (insights == null) {
         throw Exception('Anamnese não foi analisada ainda');
       }
 
-      // Busca exercícios disponíveis
       final exercises = await _exerciseService.getAllExercises();
 
-      // Gera sugestões
       final suggestions = await _ragService.generateWorkoutSuggestions(
         anamnesisId: anamnesisId,
         insights: insights,
         availableExercises: exercises,
       );
 
-      // Salva sugestões
       for (final suggestion in suggestions) {
         await _anamnesisService.saveSuggestion(suggestion);
       }
@@ -234,17 +240,50 @@ class WorkoutSuggestionNotifier extends Notifier<AsyncValue<void>> {
     }
   }
 
-  /// Aprova uma sugestão de treino
-  Future<void> approveSuggestion(String suggestionId) async {
+  /// Aprova sugestão, cria o treino no Firestore e retorna o workoutId.
+  Future<String> approveSuggestion(WorkoutSuggestion suggestion) async {
     state = const AsyncValue.loading();
 
     try {
-      await _anamnesisService.approveSuggestion(suggestionId);
+      final anamnesis =
+          await _anamnesisService.getAnamnesis(suggestion.anamnesisId);
+      if (anamnesis == null) throw Exception('Anamnese não encontrada');
+
+      await _anamnesisService.approveSuggestion(suggestion.id);
+
+      final workoutService = ref.read(workoutServiceProvider);
+
+      final workoutId = await workoutService.createWorkout(
+        name: suggestion.name,
+        studentId: anamnesis.studentId,
+        createdBy: anamnesis.personalId,
+      );
+
+      for (final exercise in suggestion.exercises) {
+        await workoutService.addExerciseToWorkout(
+          workoutId: workoutId,
+          exerciseId: exercise.exerciseId,
+          series: exercise.series,
+          reps: _parseReps(exercise.reps),
+          notes: exercise.notes.isNotEmpty ? exercise.notes : null,
+        );
+      }
+
       state = const AsyncValue.data(null);
+      return workoutId;
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
       rethrow;
     }
+  }
+
+  /// Converte reps string ("10-12", "30 segundos") para int.
+  int _parseReps(String repsStr) {
+    final numbers = RegExp(r'\d+')
+        .allMatches(repsStr)
+        .map((m) => int.parse(m.group(0)!))
+        .toList();
+    return numbers.isEmpty ? 10 : numbers.last;
   }
 }
 

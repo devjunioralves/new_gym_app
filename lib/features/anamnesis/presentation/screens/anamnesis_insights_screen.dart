@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:new_gym_app/core/models/anamnesis_insights_model.dart';
 import 'package:new_gym_app/core/models/workout_suggestion_model.dart';
 import 'package:new_gym_app/features/anamnesis/presentation/providers/anamnesis_providers.dart';
@@ -317,9 +318,9 @@ class _AnamnesisInsightsScreenState
                     color: Colors.grey.shade50,
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      title: Text(exercise.exerciseId),
+                      title: Text(exercise.exerciseName),
                       subtitle: Text(
-                        '${exercise.series}x${exercise.reps} • Rest: ${exercise.rest}s\n${exercise.reason}',
+                        '${exercise.series}x${exercise.reps}${exercise.rest != null ? ' • Descanso: ${exercise.rest}s' : ''}\n${exercise.reason}',
                       ),
                       dense: true,
                     ),
@@ -388,7 +389,7 @@ class _AnamnesisInsightsScreenState
                   child: ElevatedButton.icon(
                     onPressed: suggestion.approvedByPersonal
                         ? null
-                        : () => _approveSuggestion(suggestion.id),
+                        : () => _approveSuggestion(suggestion),
                     icon: Icon(
                       suggestion.approvedByPersonal
                           ? Icons.check_circle
@@ -563,14 +564,14 @@ class _AnamnesisInsightsScreenState
     }
   }
 
-  Future<void> _approveSuggestion(String suggestionId) async {
+  Future<void> _approveSuggestion(WorkoutSuggestion suggestion) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Aprovar Sugestão'),
         content: const Text(
           'Deseja aprovar esta sugestão?\n\n'
-          'Você poderá criar um treino baseado nesta sugestão.',
+          'Um treino será criado automaticamente na lista do aluno.',
         ),
         actions: [
           TextButton(
@@ -579,39 +580,40 @@ class _AnamnesisInsightsScreenState
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Aprovar'),
+            child: const Text('Aprovar e Criar Treino'),
           ),
         ],
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
 
     try {
-      await ref
+      final workoutId = await ref
           .read(workoutSuggestionNotifierProvider.notifier)
-          .approveSuggestion(suggestionId);
+          .approveSuggestion(suggestion);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Sugestão aprovada!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+      if (!mounted) return;
+      Navigator.of(context).pop(); // fecha loading
 
-        // Invalida provider para recarregar
-        ref.invalidate(workoutSuggestionsProvider(widget.anamnesisId));
-      }
+      ref.invalidate(workoutSuggestionsProvider(widget.anamnesisId));
+
+      context.push('/workout-detail/$workoutId');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao aprovar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      Navigator.of(context).pop(); // fecha loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao criar treino: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

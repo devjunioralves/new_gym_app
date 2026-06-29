@@ -64,7 +64,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             CircleAvatar(
               radius: 60,
-              backgroundImage: AssetImage(user.photoUrl),
+              backgroundImage: user.photoUrl.startsWith('http')
+                  ? NetworkImage(user.photoUrl)
+                  : AssetImage(user.photoUrl) as ImageProvider,
             ),
             const SizedBox(height: 16),
             Text(user.name, style: Theme.of(context).textTheme.headlineSmall),

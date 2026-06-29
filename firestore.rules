@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Faz um get() no documento do usuário logado para checar o role.
+    // Usado apenas em operações de escrita para minimizar leituras extras.
+    function isPersonalTrainer() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'personalTrainer';
+    }
+
+    // ── users/{userId} ────────────────────────────────────────────────────────
+    // Leitura: qualquer usuário autenticado (PT precisa ler dados dos alunos)
+    // Criação: qualquer autenticado (PT cria conta de aluno com auth secundária,
+    //          então request.auth.uid != userId nesse caso)
+    // Atualização: somente o próprio usuário
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ── exercises/{exerciseId} ────────────────────────────────────────────────
+    // Leitura: qualquer autenticado
+    // Escrita: somente personal trainer
+    match /exercises/{exerciseId} {
+      allow read: if isAuthenticated();
+      allow write: if isPersonalTrainer();
+    }
+
+    // ── user_exercises/{assignmentId} ─────────────────────────────────────────
+    // Leitura: o aluno (userId) ou o PT que atribuiu (assignedBy)
+    // Criação/deleção: somente o PT que atribuiu
+    match /user_exercises/{assignmentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.assignedBy == request.auth.uid
+      );
+      allow create: if isPersonalTrainer();
+      allow delete: if isAuthenticated() &&
+        resource.data.assignedBy == request.auth.uid;
+    }
+
+    // ── workouts/{workoutId} ──────────────────────────────────────────────────
+    // Leitura: o aluno (studentId) ou o PT que criou (createdBy)
+    // Criação/atualização/deleção: somente o PT que criou
+    match /workouts/{workoutId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid
+      );
+      allow create: if isPersonalTrainer();
+      allow update: if isAuthenticated() &&
+        resource.data.createdBy == request.auth.uid;
+      allow delete: if isAuthenticated() &&
+        resource.data.createdBy == request.auth.uid;
+    }
+
+    // ── anamnesis/{anamnesisId} ───────────────────────────────────────────────
+    // Leitura: o aluno (studentId) ou o PT (personalId)
+    // Criação: somente o PT
+    // Atualização: PT (status, perguntas dinâmicas) ou aluno (respostas)
+    match /anamnesis/{anamnesisId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid ||
+        resource.data.personalId == request.auth.uid
+      );
+      allow create: if isPersonalTrainer();
+      allow update: if isAuthenticated() && (
+        resource.data.personalId == request.auth.uid ||
+        resource.data.studentId == request.auth.uid
+      );
+
+      // insights subcollection — gerada pela IA após análise
+      match /insights/{insightId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.studentId == request.auth.uid ||
+          get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.personalId == request.auth.uid
+        );
+        allow write: if isAuthenticated() &&
+          get(/databases/$(database)/documents/anamnesis/$(anamnesisId)).data.personalId == request.auth.uid;
+      }
+    }
+
+    // ── workoutSuggestions/{suggestionId} ─────────────────────────────────────
+    // Geradas e aprovadas pelo PT após análise da anamnese
+    // Leitura: qualquer autenticado (o suggestionId só é conhecido pelo PT)
+    // Escrita: somente personal trainer
+    match /workoutSuggestions/{suggestionId} {
+      allow read: if isAuthenticated();
+      allow create: if isPersonalTrainer();
+      allow update: if isPersonalTrainer();
+      allow delete: if isPersonalTrainer();
+    }
+  }
+}

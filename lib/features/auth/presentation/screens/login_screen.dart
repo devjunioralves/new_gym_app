@@ -23,12 +23,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(authProvider).isLoading;
+
     ref.listen(authProvider, (previous, next) {
       next.whenData((user) {
-        if (user != null) {
-          context.go('/');
-        }
+        if (user != null) context.go('/');
       });
+      if (next is AsyncError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     });
 
     return Scaffold(
@@ -81,12 +89,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  child: const Text('Acessar'),
-                  onPressed: () {
-                    ref
-                        .read(authProvider.notifier)
-                        .login(_emailController.text, _passwordController.text);
-                  },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () => ref.read(authProvider.notifier).login(
+                            _emailController.text.trim(),
+                            _passwordController.text,
+                          ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Acessar'),
                 ),
                 const SizedBox(height: 16),
                 Row(

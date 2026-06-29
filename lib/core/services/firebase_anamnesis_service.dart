@@ -50,10 +50,32 @@ class FirebaseAnamnesisService {
     return Anamnesis.fromMap(doc.data()!);
   }
 
-  /// Lista anamneses de um aluno
+  /// Lista anamneses de um aluno (contexto do próprio aluno).
+  /// A query filtra apenas por studentId, satisfazendo a regra
+  /// `resource.data.studentId == request.auth.uid`.
   Stream<List<Anamnesis>> getStudentAnamneses(String studentId) {
     return _firestore
         .collection(_anamnesisCollection)
+        .where('studentId', isEqualTo: studentId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => Anamnesis.fromMap(doc.data()))
+              .toList(),
+        );
+  }
+
+  /// Lista anamneses de um aluno vistas pelo personal (contexto do PT).
+  /// Inclui os dois filtros para satisfazer a regra Firestore:
+  /// `resource.data.personalId == request.auth.uid`.
+  Stream<List<Anamnesis>> getStudentAnamnesesByPersonal({
+    required String studentId,
+    required String personalId,
+  }) {
+    return _firestore
+        .collection(_anamnesisCollection)
+        .where('personalId', isEqualTo: personalId)
         .where('studentId', isEqualTo: studentId)
         .orderBy('createdAt', descending: true)
         .snapshots()

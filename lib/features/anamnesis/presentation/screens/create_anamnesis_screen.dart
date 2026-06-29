@@ -198,13 +198,14 @@ class CreateAnamnesisScreen extends ConsumerWidget {
     );
 
     try {
-      // Cria anamnese no Firestore
+      // Cria anamnese no Firestore e envia para o aluno responder
       final service = ref.read(anamnesisServiceProvider);
       final anamnesisId = await service.createAnamnesis(
         studentId: studentId,
         personalId: personalId,
         baseQuestions: AnamnesisTemplate.getBaseQuestions(),
       );
+      await service.sendToStudent(anamnesisId);
 
       if (!context.mounted) return;
 
@@ -214,13 +215,13 @@ class CreateAnamnesisScreen extends ConsumerWidget {
       // Mostra sucesso
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Anamnese criada com sucesso!'),
+          content: Text('Anamnese criada e enviada para o aluno!'),
           backgroundColor: Colors.green,
         ),
       );
 
-      // Navega para detalhes da anamnese
-      context.push('/anamnesis-detail/$anamnesisId');
+      // Navega para a lista de anamneses
+      context.go('/anamnesis-list');
     } catch (e) {
       if (!context.mounted) return;
 

@@ -89,7 +89,9 @@ class HomeScreen extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundImage: AssetImage(user.photoUrl),
+                backgroundImage: user.photoUrl.startsWith('http')
+                    ? NetworkImage(user.photoUrl)
+                    : AssetImage(user.photoUrl) as ImageProvider,
               ),
               const SizedBox(width: 16),
               Text(

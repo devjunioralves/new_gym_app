@@ -35,7 +35,7 @@
 |----|-----------|-----------|--------|
 | RNF01 | Segurança | Autenticação via Firebase Auth com sessão persistente | ✅ |
 | RNF02 | Segurança | Regras de acesso no Firestore garantem que cada usuário acessa apenas seus dados | ✅ |
-| RNF03 | Privacidade | Dados de saúde coletados na anamnese são armazenados exclusivamente no Firestore do projeto, sem compartilhamento com terceiros | ✅ |
+| RNF03 | Privacidade | Dados de saúde coletados na anamnese são armazenados exclusivamente no Firestore do projeto | ✅ |
 | RNF04 | Portabilidade | O sistema deve rodar em Android, iOS e Web a partir de um único código-base (Flutter) | ✅ |
 | RNF05 | Usabilidade | A interface deve seguir Material Design 3 e ser navegável sem treinamento prévio | ✅ |
 | RNF06 | Confiabilidade | Erros de comunicação com a API Gemini devem ser tratados com mensagem amigável, sem interromper o fluxo do usuário | ✅ |
